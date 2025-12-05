@@ -13,7 +13,7 @@ import (
 )
 
 // 默认模型名称
-const DefaultModelName = "gemini-2.5-flash-preview-05-20"
+const DefaultModelName = "gemini-2.5-pro"
 
 // GeminiClient 是Gemini AI API的客户端
 type GeminiClient struct {
@@ -23,7 +23,7 @@ type GeminiClient struct {
 
 // NewGeminiClient 创建一个新的Gemini客户端
 func NewGeminiClient() (*GeminiClient, error) {
-	return NewGeminiClientWithModel(DefaultModelName) // 默认使用gemini-2.5-flash-preview-05-20模型
+	return NewGeminiClientWithModel(DefaultModelName) // 默认使用gemini-2.5-pro模型
 }
 
 // NewGeminiClientWithModel 使用指定模型创建一个新的Gemini客户端
