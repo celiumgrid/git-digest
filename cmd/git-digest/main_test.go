@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"runtime/debug"
 	"testing"
 )
@@ -68,5 +69,38 @@ func TestResolvedBuildMetadataPrefersInjectedValues(t *testing.T) {
 	}
 	if gotDate != "2026-04-09T00:00:00Z" {
 		t.Fatalf("expected injected date to win, got %q", gotDate)
+	}
+}
+
+func TestWriteVersionOutputPrintsOnlyResolvedVersion(t *testing.T) {
+	var out bytes.Buffer
+
+	writeVersionOutput(&out, "v1.2.3")
+
+	if got := out.String(); got != "v1.2.3\n" {
+		t.Fatalf("expected pure version output, got %q", got)
+	}
+}
+
+func TestResolvedBuildMetadataStripsDirtySuffix(t *testing.T) {
+	originalVersion, originalCommit, originalDate := version, commit, date
+	originalReadBuildInfo := readBuildInfo
+	t.Cleanup(func() {
+		version, commit, date = originalVersion, originalCommit, originalDate
+		readBuildInfo = originalReadBuildInfo
+	})
+
+	version = "dev"
+	commit = "none"
+	date = "unknown"
+	readBuildInfo = func() (*debug.BuildInfo, bool) {
+		return &debug.BuildInfo{
+			Main: debug.Module{Version: "v0.1.2+dirty"},
+		}, true
+	}
+
+	gotVersion, _, _ := resolvedBuildMetadata()
+	if gotVersion != "v0.1.2" {
+		t.Fatalf("expected dirty suffix to be stripped, got %q", gotVersion)
 	}
 }

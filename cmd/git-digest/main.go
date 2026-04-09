@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"runtime/debug"
 	"strings"
@@ -42,11 +43,8 @@ var wizardCmd = &cobra.Command{
 var versionCmd = &cobra.Command{
 	Use: "version",
 	Run: func(_ *cobra.Command, _ []string) {
-		language := preferredLanguage(os.Args[1:])
-		resolvedVersion, resolvedCommit, resolvedDate := resolvedBuildMetadata()
-		fmt.Printf(i18n.T(language, "main.version_label")+"\n", resolvedVersion)
-		fmt.Printf(i18n.T(language, "main.commit_label")+"\n", resolvedCommit)
-		fmt.Printf(i18n.T(language, "main.build_date_label")+"\n", resolvedDate)
+		resolvedVersion, _, _ := resolvedBuildMetadata()
+		writeVersionOutput(os.Stdout, resolvedVersion)
 	},
 }
 
@@ -201,6 +199,8 @@ func resolvedBuildMetadata() (string, string, string) {
 		}
 	}
 
+	resolvedVersion = strings.TrimSuffix(resolvedVersion, "+dirty")
+
 	return resolvedVersion, resolvedCommit, resolvedDate
 }
 
@@ -220,6 +220,10 @@ func buildSettingValue(info *debug.BuildInfo, key string) string {
 		}
 	}
 	return ""
+}
+
+func writeVersionOutput(out io.Writer, resolvedVersion string) {
+	fmt.Fprintln(out, resolvedVersion)
 }
 
 func localizeCLI(language string) {
