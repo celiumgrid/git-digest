@@ -1,6 +1,7 @@
 package app
 
 import (
+	"path/filepath"
 	"testing"
 
 	"github.com/celiumgrid/git-digest/internal/ai"
@@ -101,5 +102,41 @@ func TestDefaultTimeSpec(t *testing.T) {
 	}
 	if cfg.Time.Period != timequery.PresetLast7Days {
 		t.Fatalf("unexpected default period: %q", cfg.Time.Period)
+	}
+}
+
+func TestNormalizeConfigPathsExpandsUserPaths(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	cfg := Config{
+		RepoPath:   "~/code/seakoi",
+		OutputFile: "~/reports/out.md",
+		Prompt:     "~/Documents/prompts/custom.md",
+	}
+
+	got, err := NormalizeConfigPaths(cfg)
+	if err != nil {
+		t.Fatalf("NormalizeConfigPaths returned error: %v", err)
+	}
+
+	if got.RepoPath != filepath.Join(home, "code", "seakoi") {
+		t.Fatalf("repo path not expanded: %q", got.RepoPath)
+	}
+	if got.OutputFile != filepath.Join(home, "reports", "out.md") {
+		t.Fatalf("output path not expanded: %q", got.OutputFile)
+	}
+	if got.Prompt != filepath.Join(home, "Documents", "prompts", "custom.md") {
+		t.Fatalf("prompt path not expanded: %q", got.Prompt)
+	}
+}
+
+func TestNormalizeConfigPathsKeepsBuiltInPrompt(t *testing.T) {
+	cfg, err := NormalizeConfigPaths(Config{Prompt: "basic"})
+	if err != nil {
+		t.Fatalf("NormalizeConfigPaths returned error: %v", err)
+	}
+	if cfg.Prompt != "basic" {
+		t.Fatalf("built-in prompt should stay unchanged, got %q", cfg.Prompt)
 	}
 }

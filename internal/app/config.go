@@ -9,6 +9,7 @@ import (
 
 	"github.com/celiumgrid/git-digest/internal/ai"
 	"github.com/celiumgrid/git-digest/internal/i18n"
+	"github.com/celiumgrid/git-digest/internal/pathutil"
 	"github.com/celiumgrid/git-digest/internal/timequery"
 )
 
@@ -179,6 +180,37 @@ func ValidateConfig(cfg Config) error {
 }
 
 var nowForValidation = time.Now
+
+func NormalizeConfigPaths(cfg Config) (Config, error) {
+	var err error
+
+	if cfg.RepoPath != "" {
+		cfg.RepoPath, err = pathutil.NormalizeUserPath(cfg.RepoPath)
+		if err != nil {
+			return cfg, err
+		}
+	}
+	if cfg.ReposPath != "" {
+		cfg.ReposPath, err = pathutil.NormalizeUserPath(cfg.ReposPath)
+		if err != nil {
+			return cfg, err
+		}
+	}
+	if cfg.OutputFile != "" {
+		cfg.OutputFile, err = pathutil.NormalizeUserPath(cfg.OutputFile)
+		if err != nil {
+			return cfg, err
+		}
+	}
+	if cfg.Prompt != "" && ai.IsCustomPrompt(ai.GetPromptTypeFromString(cfg.Prompt)) {
+		cfg.Prompt, err = pathutil.NormalizeUserPath(cfg.Prompt)
+		if err != nil {
+			return cfg, err
+		}
+	}
+
+	return cfg, nil
+}
 
 func DefaultConfigPath() (string, error) {
 	configDir, err := os.UserConfigDir()

@@ -2,7 +2,10 @@ package ai
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
+
+	"github.com/celiumgrid/git-digest/internal/i18n"
 )
 
 func TestGetPromptType(t *testing.T) {
@@ -54,5 +57,29 @@ func TestLoadPromptTemplate(t *testing.T) {
 	}
 	if string(content) != testContent {
 		t.Errorf("加载的内容不匹配: 期望 %q, 得到 %q", testContent, string(content))
+	}
+}
+
+func TestLoadCustomPromptExpandsTilde(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	dir := filepath.Join(home, "Documents", "docs", "seakoi", "kpi")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatalf("无法创建目录: %v", err)
+	}
+
+	path := filepath.Join(dir, "kpi-prompt.md")
+	if err := os.WriteFile(path, []byte("custom prompt"), 0o600); err != nil {
+		t.Fatalf("无法写入提示词文件: %v", err)
+	}
+
+	content, err := LoadCustomPrompt("~/Documents/docs/seakoi/kpi/kpi-prompt.md", i18n.LanguageChinese)
+	if err != nil {
+		t.Fatalf("LoadCustomPrompt 返回错误: %v", err)
+	}
+
+	if content != "custom prompt\n" {
+		t.Fatalf("unexpected prompt content: %q", content)
 	}
 }

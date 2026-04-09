@@ -8,11 +8,18 @@ import (
 	"path/filepath"
 
 	"github.com/celiumgrid/git-digest/internal/i18n"
+	"github.com/celiumgrid/git-digest/internal/pathutil"
 )
 
 func LoadConfig(path, language string) (Config, error) {
 	if path == "" {
 		return Config{}, nil
+	}
+
+	var err error
+	path, err = pathutil.NormalizeUserPath(path)
+	if err != nil {
+		return Config{}, fmt.Errorf(i18n.T(language, "config_store.read"), err)
 	}
 
 	b, err := os.ReadFile(path)
@@ -34,6 +41,12 @@ func LoadConfig(path, language string) (Config, error) {
 func SaveConfig(path string, cfg Config, language string) error {
 	if path == "" {
 		return errors.New(i18n.T(language, "config_store.path_empty"))
+	}
+
+	var err error
+	path, err = pathutil.NormalizeUserPath(path)
+	if err != nil {
+		return fmt.Errorf(i18n.T(language, "config_store.write"), err)
 	}
 
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {

@@ -7,6 +7,7 @@ import (
 
 	"github.com/celiumgrid/git-digest/internal/app"
 	"github.com/celiumgrid/git-digest/internal/i18n"
+	"github.com/celiumgrid/git-digest/internal/pathutil"
 	"github.com/celiumgrid/git-digest/internal/timequery"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -93,6 +94,10 @@ func run(cmd *cobra.Command, args []string, forceInteractive bool) error {
 		}
 		cfgPath = defaultPath
 	}
+	cfgPath, err := pathutil.NormalizeUserPath(cfgPath)
+	if err != nil {
+		return err
+	}
 
 	fileCfg := app.Config{}
 	if !cliCfg.NoConfig {
@@ -114,6 +119,10 @@ func run(cmd *cobra.Command, args []string, forceInteractive bool) error {
 			return err
 		}
 		cfg = interactiveCfg
+	}
+	cfg, err = app.NormalizeConfigPaths(cfg)
+	if err != nil {
+		return err
 	}
 
 	if cfg.SaveAsDefault {

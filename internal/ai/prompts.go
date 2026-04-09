@@ -3,10 +3,10 @@ package ai
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/celiumgrid/git-digest/internal/i18n"
+	"github.com/celiumgrid/git-digest/internal/pathutil"
 )
 
 // PromptType 表示不同类型的提示词
@@ -45,14 +45,12 @@ func IsCustomPrompt(promptType PromptType) bool {
 
 // LoadCustomPrompt 加载自定义提示词文件
 func LoadCustomPrompt(filePath, language string) (string, error) {
-	// 检查文件是否存在
-	if !filepath.IsAbs(filePath) {
-		// 如果是相对路径，转换为绝对路径
-		cwd, err := os.Getwd()
-		if err != nil {
-			return "", fmt.Errorf(i18n.T(language, "ai.getcwd"), err)
+	filePath, err := pathutil.NormalizeUserPath(filePath)
+	if err != nil {
+		if _, cwdErr := os.Getwd(); cwdErr != nil {
+			return "", fmt.Errorf(i18n.T(language, "ai.getcwd"), cwdErr)
 		}
-		filePath = filepath.Join(cwd, filePath)
+		return "", fmt.Errorf(i18n.T(language, "ai.custom_prompt_read"), err)
 	}
 
 	// 检查文件是否存在
