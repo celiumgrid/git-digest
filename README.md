@@ -69,8 +69,8 @@ git-digest --prompt detailed
 git-digest --prompt targeted
 git-digest --prompt /path/to/custom.txt
 
-# Save current settings as default
-git-digest --repos /path/to/projects --period last-7d --format markdown --save-config
+# Save current settings as the global base config
+git-digest --repos /path/to/projects --period last-7d --format markdown --save-base-config
 ```
 
 ## Time Input Model
@@ -115,11 +115,11 @@ Language is selected with `--language en|zh`.
 Configuration is applied in this order:
 
 1. Built-in defaults
-2. Config file (`~/.config/git-digest/config.json`)
+2. Global base config (`~/.config/git-digest/config.json`)
 3. CLI flags
 4. Interactive wizard input
 
-If `--save-config` is used, the current configuration is written to the default config file.
+If `--save-base-config` is used, the current configuration is written to the global base config file.
 
 ## Prompt Templates
 

@@ -92,7 +92,7 @@ func TestRunWizardUsesSelectForPresetFlow(t *testing.T) {
 		"input:Base URL (--base-url)",
 		"input:API key (--api-key, leave empty to use environment variables)",
 		"select:Model",
-		"confirm:Save as default configuration?",
+		"confirm:Save as base configuration?",
 	)
 }
 

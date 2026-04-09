@@ -69,8 +69,8 @@ git-digest --prompt detailed
 git-digest --prompt targeted
 git-digest --prompt /path/to/custom.txt
 
-# 保存为默认配置
-git-digest --repos /path/to/projects --period last-7d --format markdown --save-config
+# 保存为全局基础配置
+git-digest --repos /path/to/projects --period last-7d --format markdown --save-base-config
 ```
 
 ## 时间输入模型
@@ -115,11 +115,11 @@ git-digest --repos /path/to/projects --period last-7d --format markdown --save-c
 配置按以下顺序生效：
 
 1. 内置默认值
-2. 配置文件（默认 `~/.config/git-digest/config.json`）
+2. 全局基础配置（`~/.config/git-digest/config.json`）
 3. 命令行参数
 4. 交互式向导输入
 
-如果使用 `--save-config`，当前配置会写入默认配置文件。
+如果使用 `--save-base-config`，当前配置会写入全局基础配置文件。
 
 ## 提示词模板
 

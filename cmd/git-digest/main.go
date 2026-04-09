@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"runtime/debug"
 	"strings"
 
 	"github.com/celiumgrid/git-digest/internal/app"
@@ -19,6 +20,8 @@ var (
 	commit  = "none"
 	date    = "unknown"
 )
+
+var readBuildInfo = debug.ReadBuildInfo
 
 var cliCfg app.Config
 
@@ -40,9 +43,10 @@ var versionCmd = &cobra.Command{
 	Use: "version",
 	Run: func(_ *cobra.Command, _ []string) {
 		language := preferredLanguage(os.Args[1:])
-		fmt.Printf(i18n.T(language, "main.version_label")+"\n", version)
-		fmt.Printf(i18n.T(language, "main.commit_label")+"\n", commit)
-		fmt.Printf(i18n.T(language, "main.build_date_label")+"\n", date)
+		resolvedVersion, resolvedCommit, resolvedDate := resolvedBuildMetadata()
+		fmt.Printf(i18n.T(language, "main.version_label")+"\n", resolvedVersion)
+		fmt.Printf(i18n.T(language, "main.commit_label")+"\n", resolvedCommit)
+		fmt.Printf(i18n.T(language, "main.build_date_label")+"\n", resolvedDate)
 	},
 }
 
@@ -70,8 +74,16 @@ func init() {
 
 	rootCmd.PersistentFlags().BoolVar(&cliCfg.Interactive, "interactive", false, i18n.T(language, "flag.interactive"))
 	rootCmd.PersistentFlags().StringVar(&cliCfg.ConfigPath, "config", "", i18n.T(language, "flag.config"))
+	rootCmd.PersistentFlags().BoolVar(&cliCfg.NoConfig, "no-base-config", false, i18n.T(language, "flag.no_config"))
 	rootCmd.PersistentFlags().BoolVar(&cliCfg.NoConfig, "no-config", false, i18n.T(language, "flag.no_config"))
+	rootCmd.PersistentFlags().BoolVar(&cliCfg.SaveAsDefault, "save-base-config", false, i18n.T(language, "flag.save_config"))
 	rootCmd.PersistentFlags().BoolVar(&cliCfg.SaveAsDefault, "save-config", false, i18n.T(language, "flag.save_config"))
+	if err := rootCmd.PersistentFlags().MarkHidden("no-config"); err != nil {
+		panic(err)
+	}
+	if err := rootCmd.PersistentFlags().MarkHidden("save-config"); err != nil {
+		panic(err)
+	}
 }
 
 func main() {
@@ -166,6 +178,48 @@ func preferredLanguage(args []string) string {
 		}
 	}
 	return i18n.LanguageEnglish
+}
+
+func resolvedBuildMetadata() (string, string, string) {
+	resolvedVersion := version
+	resolvedCommit := commit
+	resolvedDate := date
+
+	if info, ok := readBuildInfo(); ok {
+		if isUnsetBuildValue(resolvedVersion, "dev", "(devel)", "") && info.Main.Version != "" && info.Main.Version != "(devel)" {
+			resolvedVersion = info.Main.Version
+		}
+		if isUnsetBuildValue(resolvedCommit, "none", "") {
+			if revision := buildSettingValue(info, "vcs.revision"); revision != "" {
+				resolvedCommit = revision
+			}
+		}
+		if isUnsetBuildValue(resolvedDate, "unknown", "") {
+			if vcsTime := buildSettingValue(info, "vcs.time"); vcsTime != "" {
+				resolvedDate = vcsTime
+			}
+		}
+	}
+
+	return resolvedVersion, resolvedCommit, resolvedDate
+}
+
+func isUnsetBuildValue(value string, unsetValues ...string) bool {
+	for _, unset := range unsetValues {
+		if value == unset {
+			return true
+		}
+	}
+	return false
+}
+
+func buildSettingValue(info *debug.BuildInfo, key string) string {
+	for _, setting := range info.Settings {
+		if setting.Key == key {
+			return setting.Value
+		}
+	}
+	return ""
 }
 
 func localizeCLI(language string) {
