@@ -34,8 +34,6 @@ type Config struct {
 	Interactive bool   `json:"interactive,omitempty"`
 	ConfigPath  string `json:"-"`
 	NoConfig    bool   `json:"-"`
-
-	SaveAsDefault bool `json:"-"`
 }
 
 func DefaultConfig() Config {
@@ -171,7 +169,7 @@ func ValidateConfig(cfg Config) error {
 		return errors.New(i18n.T(cfg.Language, "config.repo_conflict"))
 	}
 
-	if cfg.Format != "text" && cfg.Format != "markdown" {
+	if cfg.Format != "" && cfg.Format != "text" && cfg.Format != "markdown" {
 		return fmt.Errorf(i18n.T(cfg.Language, "config.format"), cfg.Format)
 	}
 

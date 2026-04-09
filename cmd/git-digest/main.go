@@ -40,6 +40,17 @@ var wizardCmd = &cobra.Command{
 	},
 }
 
+var configCmd = &cobra.Command{
+	Use: "config",
+}
+
+var configInitCmd = &cobra.Command{
+	Use: "init",
+	RunE: func(_ *cobra.Command, _ []string) error {
+		return runConfigInit()
+	},
+}
+
 var versionCmd = &cobra.Command{
 	Use: "version",
 	Run: func(_ *cobra.Command, _ []string) {
@@ -53,6 +64,8 @@ func init() {
 	localizeCLI(language)
 	rootCmd.AddCommand(versionCmd)
 	rootCmd.AddCommand(wizardCmd)
+	rootCmd.AddCommand(configCmd)
+	configCmd.AddCommand(configInitCmd)
 
 	rootCmd.PersistentFlags().StringVar(&cliCfg.Language, "language", "", i18n.T(language, "flag.language"))
 	rootCmd.PersistentFlags().StringVar(&cliCfg.Time.Period, "period", "", i18n.T(language, "flag.period"))
@@ -74,12 +87,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&cliCfg.ConfigPath, "config", "", i18n.T(language, "flag.config"))
 	rootCmd.PersistentFlags().BoolVar(&cliCfg.NoConfig, "no-base-config", false, i18n.T(language, "flag.no_config"))
 	rootCmd.PersistentFlags().BoolVar(&cliCfg.NoConfig, "no-config", false, i18n.T(language, "flag.no_config"))
-	rootCmd.PersistentFlags().BoolVar(&cliCfg.SaveAsDefault, "save-base-config", false, i18n.T(language, "flag.save_config"))
-	rootCmd.PersistentFlags().BoolVar(&cliCfg.SaveAsDefault, "save-config", false, i18n.T(language, "flag.save_config"))
 	if err := rootCmd.PersistentFlags().MarkHidden("no-config"); err != nil {
-		panic(err)
-	}
-	if err := rootCmd.PersistentFlags().MarkHidden("save-config"); err != nil {
 		panic(err)
 	}
 }
@@ -135,15 +143,46 @@ func run(cmd *cobra.Command, args []string, forceInteractive bool) error {
 		return err
 	}
 
-	if cfg.SaveAsDefault {
-		if err := app.SaveConfig(cfgPath, cfg, cfg.Language); err != nil {
-			return err
-		}
-		fmt.Fprintf(os.Stdout, i18n.T(cfg.Language, "main.saved_config")+"\n", cfgPath)
-	}
-
 	service := app.NewService(os.Stdout, os.Stderr)
 	return service.Run(cfg)
+}
+
+func runConfigInit() error {
+	language := preferredLanguage(os.Args[1:])
+	cfgPath := cliCfg.ConfigPath
+	if cfgPath == "" {
+		defaultPath, err := app.DefaultConfigPath()
+		if err != nil {
+			return err
+		}
+		cfgPath = defaultPath
+	}
+	cfgPath, err := pathutil.NormalizeUserPath(cfgPath)
+	if err != nil {
+		return err
+	}
+
+	cfg, err := app.RunBaseConfigWizard(os.Stdin, os.Stdout, language)
+	if err != nil {
+		return err
+	}
+	cfg, err = app.NormalizeConfigPaths(cfg)
+	if err != nil {
+		return err
+	}
+	if err := app.ValidateConfig(cfg); err != nil {
+		return err
+	}
+
+	outputLanguage := cfg.Language
+	if outputLanguage == "" {
+		outputLanguage = language
+	}
+	if err := app.SaveConfig(cfgPath, cfg, outputLanguage); err != nil {
+		return err
+	}
+	fmt.Fprintf(os.Stdout, i18n.T(outputLanguage, "main.saved_config")+"\n", cfgPath)
+	return nil
 }
 
 func changedFlags(cmd *cobra.Command) map[string]bool {
@@ -231,4 +270,6 @@ func localizeCLI(language string) {
 	rootCmd.Long = i18n.T(language, "main.long")
 	wizardCmd.Short = i18n.T(language, "main.wizard_short")
 	versionCmd.Short = i18n.T(language, "main.version_short")
+	configCmd.Short = i18n.T(language, "main.config_short")
+	configInitCmd.Short = i18n.T(language, "main.config_init_short")
 }

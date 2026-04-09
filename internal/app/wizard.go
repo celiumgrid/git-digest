@@ -251,11 +251,6 @@ func runWizardWithPrompter(prompter wizardPrompter, base Config) (Config, error)
 		return cfg, err
 	}
 
-	cfg.SaveAsDefault, err = prompter.Confirm(i18n.T(cfg.Language, "wizard.save_default"), false)
-	if err != nil {
-		return cfg, err
-	}
-
 	return cfg, nil
 }
 

@@ -69,8 +69,8 @@ git-digest --prompt detailed
 git-digest --prompt targeted
 git-digest --prompt /path/to/custom.txt
 
-# 保存为全局基础配置
-git-digest --repos /path/to/projects --period last-7d --format markdown --save-base-config
+# 创建全局基础配置
+git-digest config init
 ```
 
 ## 时间输入模型
@@ -119,7 +119,28 @@ git-digest --repos /path/to/projects --period last-7d --format markdown --save-b
 3. 命令行参数
 4. 交互式向导输入
 
-如果使用 `--save-base-config`，当前配置会写入全局基础配置文件。
+使用 `git-digest config init` 会创建或覆盖全局基础配置文件。
+这个命令写入的是一份独立的全局配置模板，不会把你某次运行时的默认值直接保存进去。
+在配置向导里留空的字段会保持为“不设置”。
+
+保存一次后，后续正常执行会自动加载这份基础配置：
+
+```bash
+git-digest
+git-digest wizard
+```
+
+如果只想临时覆盖某个值，直接传命令行参数即可：
+
+```bash
+git-digest --period last-month
+```
+
+如果本次不想加载全局基础配置：
+
+```bash
+git-digest --no-base-config
+```
 
 ## 提示词模板
 

@@ -92,7 +92,6 @@ func TestRunWizardUsesSelectForPresetFlow(t *testing.T) {
 		"input:Base URL (--base-url)",
 		"input:API key (--api-key, leave empty to use environment variables)",
 		"select:Model",
-		"confirm:Save as base configuration?",
 	)
 }
 
@@ -159,6 +158,116 @@ func TestRunWizardPromptsForCustomModel(t *testing.T) {
 		t.Fatalf("unexpected custom model: %q", cfg.Model)
 	}
 	assertContainsCall(t, prompter.calls, promptCall{kind: "input", label: "Custom model name"})
+}
+
+func TestRunWizardNoLongerPromptsToSaveBaseConfig(t *testing.T) {
+	prompter := &stubPrompter{
+		selects: []string{
+			"English",
+			"single",
+			"preset",
+			"this-month",
+			"text",
+			"basic",
+			"Gemini",
+			"gemini-2.5-pro",
+		},
+		inputs: []string{".", "", "", "", ""},
+	}
+
+	cfg, err := runWizardWithPrompter(prompter, DefaultConfig())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(prompter.confirms) != 0 {
+		t.Fatalf("runtime wizard should not consume confirm prompts")
+	}
+	if cfg.Provider != ai.ProviderGemini {
+		t.Fatalf("unexpected provider: %q", cfg.Provider)
+	}
+	for _, call := range prompter.calls {
+		if call.kind == "confirm" {
+			t.Fatalf("runtime wizard should not ask for save confirmation: %+v", call)
+		}
+	}
+}
+
+func TestRunBaseConfigWizardLeavesFieldsUnset(t *testing.T) {
+	prompter := &stubPrompter{
+		selects: []string{
+			"Leave unset",
+			"Leave unset",
+			"Leave unset",
+			"Leave unset",
+			"Leave unset",
+			"Leave unset",
+		},
+	}
+
+	cfg, err := runBaseConfigWizardWithPrompter(prompter, "en")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if cfg != (Config{}) {
+		t.Fatalf("expected empty sparse config, got %+v", cfg)
+	}
+}
+
+func TestRunBaseConfigWizardBuildsSparseConfig(t *testing.T) {
+	prompter := &stubPrompter{
+		selects: []string{
+			"中文",
+			"多仓库",
+			"预设周期",
+			"上个月",
+			"Markdown",
+			"自定义文件",
+			"OpenAI",
+		},
+		inputs: []string{
+			"~/code",
+			"~/prompts/team.md",
+			"alice",
+			"~/reports/team.md",
+			"https://proxy.example/v1",
+			"sk-test",
+			"gpt-4.1-mini",
+		},
+	}
+
+	cfg, err := runBaseConfigWizardWithPrompter(prompter, "en")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if cfg.Language != timequery.LanguageChinese {
+		t.Fatalf("unexpected language: %q", cfg.Language)
+	}
+	if cfg.RepoPath != "" || cfg.ReposPath != "~/code" {
+		t.Fatalf("unexpected repo config: %+v", cfg)
+	}
+	if cfg.Time.Kind != timequery.KindPreset || cfg.Time.Period != timequery.PresetLastMonth {
+		t.Fatalf("unexpected time config: %+v", cfg.Time)
+	}
+	if cfg.Format != "markdown" {
+		t.Fatalf("unexpected format: %q", cfg.Format)
+	}
+	if cfg.Prompt != "~/prompts/team.md" {
+		t.Fatalf("unexpected prompt: %q", cfg.Prompt)
+	}
+	if cfg.Provider != ai.ProviderOpenAI {
+		t.Fatalf("unexpected provider: %q", cfg.Provider)
+	}
+	if cfg.BaseURL != "https://proxy.example/v1" {
+		t.Fatalf("unexpected base url: %q", cfg.BaseURL)
+	}
+	if cfg.APIKey != "sk-test" {
+		t.Fatalf("unexpected api key: %q", cfg.APIKey)
+	}
+	if cfg.Model != "gpt-4.1-mini" {
+		t.Fatalf("unexpected model: %q", cfg.Model)
+	}
 }
 
 func assertPromptKinds(t *testing.T, calls []promptCall, want ...string) {

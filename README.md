@@ -69,8 +69,8 @@ git-digest --prompt detailed
 git-digest --prompt targeted
 git-digest --prompt /path/to/custom.txt
 
-# Save current settings as the global base config
-git-digest --repos /path/to/projects --period last-7d --format markdown --save-base-config
+# Create the global base config
+git-digest config init
 ```
 
 ## Time Input Model
@@ -119,7 +119,28 @@ Configuration is applied in this order:
 3. CLI flags
 4. Interactive wizard input
 
-If `--save-base-config` is used, the current configuration is written to the global base config file.
+Use `git-digest config init` to create or overwrite the global base config file.
+This command writes a dedicated global template instead of saving the defaults from a single report run.
+Fields left blank in the config wizard stay unset.
+
+After saving it once, normal runs load it automatically:
+
+```bash
+git-digest
+git-digest wizard
+```
+
+To override one value for the current run, pass a CLI flag:
+
+```bash
+git-digest --period last-month
+```
+
+To skip the global base config for one run:
+
+```bash
+git-digest --no-base-config
+```
 
 ## Prompt Templates
 

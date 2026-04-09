@@ -64,3 +64,35 @@ func TestLoadAndSaveConfigExpandTildePath(t *testing.T) {
 		t.Fatalf("unexpected loaded prompt: %q", loaded.Prompt)
 	}
 }
+
+func TestSaveConfigOmitsUnsetTimeFromJSON(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.json")
+
+	cfg := Config{
+		Provider: "openai",
+	}
+	if err := SaveConfig(path, cfg, "en"); err != nil {
+		t.Fatalf("SaveConfig returned error: %v", err)
+	}
+
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("failed to read saved config: %v", err)
+	}
+
+	if string(raw) == "" {
+		t.Fatal("expected saved config to be non-empty")
+	}
+	if contains := string(raw); contains != "" && jsonContainsKey(raw, "time") {
+		t.Fatalf("expected unset time to be omitted from saved JSON, got %s", raw)
+	}
+}
+
+func jsonContainsKey(raw []byte, key string) bool {
+	var decoded map[string]any
+	if err := json.Unmarshal(raw, &decoded); err != nil {
+		return false
+	}
+	_, ok := decoded[key]
+	return ok
+}

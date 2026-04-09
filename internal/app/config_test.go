@@ -140,3 +140,9 @@ func TestNormalizeConfigPathsKeepsBuiltInPrompt(t *testing.T) {
 		t.Fatalf("built-in prompt should stay unchanged, got %q", cfg.Prompt)
 	}
 }
+
+func TestValidateConfigAllowsSparseConfig(t *testing.T) {
+	if err := ValidateConfig(Config{}); err != nil {
+		t.Fatalf("expected sparse config to be valid, got %v", err)
+	}
+}
