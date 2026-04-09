@@ -48,7 +48,7 @@ snapshot:
 
 release:
   github:
-    owner: kway-teow
+    owner: celiumgrid
     name: git-digest
   draft: false
   prerelease: auto
