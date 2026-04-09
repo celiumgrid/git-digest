@@ -131,7 +131,11 @@ func resolveRepoPaths(cfg Config) ([]string, error) {
 		}
 		return repos, nil
 	case cfg.RepoPath != "":
-		return []string{cfg.RepoPath}, nil
+		repoPath, err := git.NormalizePath(cfg.RepoPath)
+		if err != nil {
+			return nil, fmt.Errorf(i18n.T(cfg.Language, "git.abs_path"), err)
+		}
+		return []string{repoPath}, nil
 	default:
 		return []string{"."}, nil
 	}

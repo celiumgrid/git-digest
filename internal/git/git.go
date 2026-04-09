@@ -282,8 +282,8 @@ func DiscoverGitRepos(rootPath, language string) ([]string, error) {
 		rootPath = "."
 	}
 
-	// 获取绝对路径
-	absRootPath, err := filepath.Abs(rootPath)
+	// 展开用户目录并转换为绝对路径
+	absRootPath, err := NormalizePath(rootPath)
 	if err != nil {
 		return nil, fmt.Errorf(i18n.T(language, "git.abs_path"), err)
 	}
