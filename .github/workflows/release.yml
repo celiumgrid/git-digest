@@ -38,5 +38,5 @@ jobs:
       - name: Upload assets
         uses: actions/upload-artifact@v4
         with:
-          name: git-work-log
+          name: git-digest
           path: dist/*

@@ -5,57 +5,45 @@ import (
 	"io"
 	"os"
 	"strings"
-	"time"
 
-	"github.com/kway-teow/git-work-log/internal/git"
+	"github.com/kway-teow/git-digest/internal/git"
+	"github.com/kway-teow/git-digest/internal/timequery"
 )
 
-// Format 表示报告输出格式
 type Format string
 
 const (
-	// FormatText 纯文本格式
-	FormatText Format = "text"
-	// FormatMarkdown Markdown格式
+	FormatText     Format = "text"
 	FormatMarkdown Format = "markdown"
 )
 
-// Generator 报告生成器
 type Generator struct {
 	Format Format
-	Output io.Writer // 输出目标，可以是文件或标准输出
+	Output io.Writer
 }
 
-// NewGenerator 创建一个新的报告生成器
 func NewGenerator(format Format, output io.Writer) *Generator {
-	// 如果没有指定输出，默认使用标准输出
 	if output == nil {
 		output = os.Stdout
 	}
 	return &Generator{Format: format, Output: output}
 }
 
-// GenerateReport 生成周报
-func (g *Generator) GenerateReport(summary string, commits []git.CommitInfo, fromDate, toDate time.Time) error {
-	// 根据格式生成报告
+func (g *Generator) GenerateReport(summary string, commits []git.CommitInfo, window timequery.Window, language string) error {
+	language = timequery.NormalizeLanguage(language)
 	switch g.Format {
 	case FormatMarkdown:
-		return g.generateMarkdownReport(summary, commits, fromDate, toDate)
-	default: // 默认使用文本格式
-		return g.generateTextReport(summary, commits, fromDate, toDate)
+		return g.generateMarkdownReport(summary, commits, window, language)
+	default:
+		return g.generateTextReport(summary, commits, window, language)
 	}
 }
 
-// generateTextReport 生成纯文本格式的报告
-func (g *Generator) generateTextReport(summary string, commits []git.CommitInfo, fromDate, toDate time.Time) error {
-	// 根据时间范围确定报告类型
-	reportType := g.determineReportType(fromDate, toDate)
-
-	fmt.Fprintf(g.Output, "%s (%s 至 %s)\n", reportType, fromDate.Format("2006-01-02"), toDate.Format("2006-01-02"))
+func (g *Generator) generateTextReport(summary string, commits []git.CommitInfo, window timequery.Window, language string) error {
+	fmt.Fprintf(g.Output, "%s (%s %s %s)\n", window.Label, window.Start.Format("2006-01-02"), word(language, "to", "至"), window.End.Format("2006-01-02"))
 	fmt.Fprintln(g.Output, "==================================")
 	fmt.Fprintln(g.Output)
 
-	// 统计仓库信息
 	repoStats := make(map[string]int)
 	for _, commit := range commits {
 		if commit.RepoPath != "" {
@@ -63,61 +51,41 @@ func (g *Generator) generateTextReport(summary string, commits []git.CommitInfo,
 		}
 	}
 
-	// 如果有多个仓库，显示仓库统计
 	if len(repoStats) > 1 {
-		fmt.Fprintln(g.Output, "## 仓库统计")
+		fmt.Fprintln(g.Output, heading(language, "Repo Stats", "仓库统计", 2))
 		for repo, count := range repoStats {
-			fmt.Fprintf(g.Output, "- %s: %d 条提交\n", repo, count)
+			fmt.Fprintf(g.Output, "- %s: %d %s\n", repo, count, word(language, "commits", "条提交"))
 		}
 		fmt.Fprintln(g.Output)
 	}
 
-	fmt.Fprintln(g.Output, "## AI 总结")
+	fmt.Fprintln(g.Output, heading(language, "AI Summary", "AI 总结", 2))
 	fmt.Fprintln(g.Output, summary)
 	fmt.Fprintln(g.Output)
-	fmt.Fprintln(g.Output, "## 提交记录")
-	fmt.Fprintf(g.Output, "共有 %d 条提交记录\n\n", len(commits))
+	fmt.Fprintln(g.Output, heading(language, "Commit History", "提交记录", 2))
+	fmt.Fprintf(g.Output, "%s %d %s\n\n", word(language, "Total", "共有"), len(commits), word(language, "commits", "条提交记录"))
 
 	for i, commit := range commits {
-		fmt.Fprintf(g.Output, "提交 %d:\n", i+1)
-		fmt.Fprintf(g.Output, "- 哈希值: %s\n", commit.Hash[:8])
-		fmt.Fprintf(g.Output, "- 作者: %s\n", commit.Author)
-		fmt.Fprintf(g.Output, "- 日期: %s\n", commit.Date.Format("2006-01-02 15:04:05"))
-
-		// 显示仓库信息（如果有多个仓库）
+		fmt.Fprintf(g.Output, "%s %d:\n", word(language, "Commit", "提交"), i+1)
+		fmt.Fprintf(g.Output, "- %s: %s\n", word(language, "Hash", "哈希值"), commit.Hash[:8])
+		fmt.Fprintf(g.Output, "- %s: %s\n", word(language, "Author", "作者"), commit.Author)
+		fmt.Fprintf(g.Output, "- %s: %s\n", word(language, "Date", "日期"), commit.Date.Format("2006-01-02 15:04:05"))
 		if len(repoStats) > 1 && commit.RepoPath != "" {
-			fmt.Fprintf(g.Output, "- 仓库: %s\n", commit.RepoPath)
+			fmt.Fprintf(g.Output, "- %s: %s\n", word(language, "Repo", "仓库"), commit.RepoPath)
 		}
-
-		// 显示分支信息
 		if len(commit.Branches) > 0 {
-			fmt.Fprintf(g.Output, "- 分支: %s\n", strings.Join(commit.Branches, ", "))
+			fmt.Fprintf(g.Output, "- %s: %s\n", word(language, "Branch", "分支"), strings.Join(commit.Branches, ", "))
 		}
-
-		fmt.Fprintf(g.Output, "- 消息: %s\n\n", commit.Message)
+		fmt.Fprintf(g.Output, "- %s: %s\n\n", word(language, "Message", "消息"), commit.Message)
 	}
 
 	return nil
 }
 
-// generateMarkdownReport 生成Markdown格式的报告
-func (g *Generator) generateMarkdownReport(summary string, commits []git.CommitInfo, fromDate, toDate time.Time) error {
-	// 根据时间范围确定报告类型
-	reportType := g.determineReportType(fromDate, toDate)
+func (g *Generator) generateMarkdownReport(summary string, commits []git.CommitInfo, window timequery.Window, language string) error {
+	fileName := fmt.Sprintf("report-%s-to-%s.md", window.Start.Format("2006-01-02"), window.End.Format("2006-01-02"))
+	fmt.Fprintf(g.Output, "# %s (%s %s %s)\n\n", window.Label, window.Start.Format("2006-01-02"), word(language, "to", "至"), window.End.Format("2006-01-02"))
 
-	// 生成文件名用于提示
-	fileName := fmt.Sprintf("%s-%s-to-%s.md",
-		g.getReportTypeShort(fromDate, toDate),
-		fromDate.Format("2006-01-02"),
-		toDate.Format("2006-01-02"))
-
-	// 写入标题
-	fmt.Fprintf(g.Output, "# %s (%s 至 %s)\n\n",
-		reportType,
-		fromDate.Format("2006-01-02"),
-		toDate.Format("2006-01-02"))
-
-	// 统计仓库信息
 	repoStats := make(map[string]int)
 	for _, commit := range commits {
 		if commit.RepoPath != "" {
@@ -125,94 +93,56 @@ func (g *Generator) generateMarkdownReport(summary string, commits []git.CommitI
 		}
 	}
 
-	// 如果有多个仓库，显示仓库统计
 	if len(repoStats) > 1 {
-		fmt.Fprintln(g.Output, "## 仓库统计")
+		fmt.Fprintln(g.Output, heading(language, "Repo Stats", "仓库统计", 2))
 		fmt.Fprintln(g.Output)
 		for repo, count := range repoStats {
-			fmt.Fprintf(g.Output, "- **%s**: %d 条提交\n", repo, count)
+			fmt.Fprintf(g.Output, "- **%s**: %d %s\n", repo, count, word(language, "commits", "条提交"))
 		}
 		fmt.Fprintln(g.Output)
 	}
 
-	// 写入AI总结
-	fmt.Fprintln(g.Output, "## AI 总结")
+	fmt.Fprintln(g.Output, heading(language, "AI Summary", "AI 总结", 2))
 	fmt.Fprintln(g.Output, summary)
 	fmt.Fprintln(g.Output)
-
-	// 写入提交记录
-	fmt.Fprintln(g.Output, "## 提交记录")
-	fmt.Fprintf(g.Output, "共有 %d 条提交记录\n\n", len(commits))
+	fmt.Fprintln(g.Output, heading(language, "Commit History", "提交记录", 2))
+	fmt.Fprintf(g.Output, "%s %d %s\n\n", word(language, "Total", "共有"), len(commits), word(language, "commits", "条提交记录"))
 
 	for i, commit := range commits {
-		fmt.Fprintf(g.Output, "### 提交 %d\n\n", i+1)
-		fmt.Fprintf(g.Output, "- **哈希值**: `%s`\n", commit.Hash[:8])
-		fmt.Fprintf(g.Output, "- **作者**: %s\n", commit.Author)
-		fmt.Fprintf(g.Output, "- **日期**: %s\n", commit.Date.Format("2006-01-02 15:04:05"))
-
-		// 显示仓库信息（如果有多个仓库）
+		fmt.Fprintf(g.Output, "%s %d\n\n", heading(language, "Commit", "提交", 3), i+1)
+		fmt.Fprintf(g.Output, "- **%s**: `%s`\n", word(language, "Hash", "哈希值"), commit.Hash[:8])
+		fmt.Fprintf(g.Output, "- **%s**: %s\n", word(language, "Author", "作者"), commit.Author)
+		fmt.Fprintf(g.Output, "- **%s**: %s\n", word(language, "Date", "日期"), commit.Date.Format("2006-01-02 15:04:05"))
 		if len(repoStats) > 1 && commit.RepoPath != "" {
-			fmt.Fprintf(g.Output, "- **仓库**: `%s`\n", commit.RepoPath)
+			fmt.Fprintf(g.Output, "- **%s**: `%s`\n", word(language, "Repo", "仓库"), commit.RepoPath)
 		}
-
-		// 显示分支信息
 		if len(commit.Branches) > 0 {
-			fmt.Fprintf(g.Output, "- **分支**: %s\n", strings.Join(commit.Branches, ", "))
+			fmt.Fprintf(g.Output, "- **%s**: %s\n", word(language, "Branch", "分支"), strings.Join(commit.Branches, ", "))
 		}
-
-		fmt.Fprintf(g.Output, "- **消息**: %s\n", commit.Message)
-
+		fmt.Fprintf(g.Output, "- **%s**: %s\n", word(language, "Message", "消息"), commit.Message)
 		if len(commit.ChangedFiles) > 0 {
-			fmt.Fprintln(g.Output, "- **变更文件**:")
+			fmt.Fprintln(g.Output, "- **"+word(language, "Changed Files", "变更文件")+"**:")
 			for _, fileName := range commit.ChangedFiles {
 				fmt.Fprintf(g.Output, "  - `%s`\n", fileName)
 			}
 		}
-
 		fmt.Fprintln(g.Output)
 	}
 
-	// 如果输出不是标准输出，打印提示信息
 	if g.Output != os.Stdout {
-		fmt.Printf("已生成Markdown报告: %s\n", fileName)
+		fmt.Printf("%s: %s\n", word(language, "Generated markdown report", "已生成Markdown报告"), fileName)
 	}
 	return nil
 }
 
-// determineReportType 根据时间范围确定报告类型
-func (g *Generator) determineReportType(fromDate, toDate time.Time) string {
-	// 计算时间范围的天数
-	daysDiff := toDate.Sub(fromDate).Hours() / 24
-
-	switch {
-	case daysDiff <= 1:
-		return "工作日报"
-	case daysDiff <= 7:
-		return "工作周报"
-	case daysDiff <= 31:
-		return "工作月报"
-	case daysDiff <= 366:
-		return "工作年报"
-	default:
-		return "工作报告"
+func word(language, en, zh string) string {
+	if timequery.NormalizeLanguage(language) == timequery.LanguageChinese {
+		return zh
 	}
+	return en
 }
 
-// getReportTypeShort 获取报告类型的简短形式，用于文件名
-func (g *Generator) getReportTypeShort(fromDate, toDate time.Time) string {
-	// 计算时间范围的天数
-	daysDiff := toDate.Sub(fromDate).Hours() / 24
-
-	switch {
-	case daysDiff <= 1:
-		return "daily"
-	case daysDiff <= 7:
-		return "weekly"
-	case daysDiff <= 31:
-		return "monthly"
-	case daysDiff <= 366:
-		return "yearly"
-	default:
-		return "report"
-	}
+func heading(language, en, zh string, level int) string {
+	prefix := strings.Repeat("#", level)
+	return prefix + " " + word(language, en, zh)
 }

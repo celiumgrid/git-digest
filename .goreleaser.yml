@@ -21,9 +21,9 @@ builds:
       - amd64
       - arm64
     # 主要命令
-    main: ./cmd/git-work-log/main.go
+    main: ./cmd/git-digest/main.go
     # 二进制文件名模板
-    binary: git-work-log
+    binary: git-digest
     # 构建标记
     ldflags:
       - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
@@ -32,24 +32,26 @@ archives:
   - id: default
     formats:
       - tar.gz
-    name_template: '{{ .ProjectName }}_{{ .Version }}_{{ if eq .Os "darwin" }}macOS{{ else }}{{ .Os }}{{ end }}_{{ .Arch }}'
-    files:
-      - README.md
-      - LICENSE
-      - prompts/*
-  - id: zip-archives
-    formats:
       - zip
     name_template: '{{ .ProjectName }}_{{ .Version }}_{{ if eq .Os "darwin" }}macOS{{ else }}{{ .Os }}{{ end }}_{{ .Arch }}'
     files:
       - README.md
+      - README.zh-CN.md
       - LICENSE
       - prompts/*
 
 checksum:
   name_template: 'checksums.txt'
 
-snapshot: {}
+snapshot:
+  name_template: "{{ incpatch .Version }}-next"
+
+release:
+  github:
+    owner: kway-teow
+    name: git-digest
+  draft: false
+  prerelease: auto
 
 changelog:
   sort: asc

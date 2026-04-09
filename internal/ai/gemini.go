@@ -4,137 +4,241 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
-	"github.com/google/generative-ai-go/genai"
-	"github.com/kway-teow/git-work-log/internal/git"
-	"google.golang.org/api/option"
+	"github.com/kway-teow/git-digest/internal/git"
+	"github.com/kway-teow/git-digest/internal/i18n"
+	openai "github.com/sashabaranov/go-openai"
 )
 
-// 默认模型名称
-const DefaultModelName = "gemini-2.5-pro"
+const (
+	ProviderOpenAI   = "openai"
+	ProviderGemini   = "gemini"
+	ProviderDeepSeek = "deepseek"
 
-// GeminiClient 是Gemini AI API的客户端
-type GeminiClient struct {
-	client *genai.Client
-	model  *genai.GenerativeModel
+	DefaultProvider = ProviderGemini
+)
+
+// ClientConfig is the provider-neutral runtime config for the AI client.
+type ClientConfig struct {
+	Provider string
+	BaseURL  string
+	APIKey   string
+	Model    string
+	Language string
 }
 
-// NewGeminiClient 创建一个新的Gemini客户端
-func NewGeminiClient() (*GeminiClient, error) {
-	return NewGeminiClientWithModel(DefaultModelName) // 默认使用gemini-2.5-pro模型
+// DefaultModelName returns the default text model for a provider.
+func DefaultModelName(provider string) string {
+	switch normalizeProvider(provider) {
+	case ProviderOpenAI:
+		return "gpt-4.1-mini"
+	case ProviderDeepSeek:
+		return "deepseek-chat"
+	case ProviderGemini:
+		fallthrough
+	default:
+		return "gemini-2.5-pro"
+	}
 }
 
-// NewGeminiClientWithModel 使用指定模型创建一个新的Gemini客户端
-func NewGeminiClientWithModel(modelName string) (*GeminiClient, error) {
-	// 如果没有指定模型名称，使用默认模型
-	if modelName == "" {
-		modelName = DefaultModelName
+// DefaultBaseURL returns the default OpenAI-compatible endpoint for a provider.
+func DefaultBaseURL(provider string) string {
+	switch normalizeProvider(provider) {
+	case ProviderOpenAI:
+		return "https://api.openai.com/v1"
+	case ProviderDeepSeek:
+		return "https://api.deepseek.com/v1"
+	case ProviderGemini:
+		fallthrough
+	default:
+		return "https://generativelanguage.googleapis.com/v1beta/openai"
 	}
-	// 从环境变量获取API密钥
-	apiKey := os.Getenv("GEMINI_API_KEY")
-	if apiKey == "" {
-		return nil, fmt.Errorf("未设置GEMINI_API_KEY环境变量")
+}
+
+func normalizeProvider(provider string) string {
+	provider = strings.ToLower(strings.TrimSpace(provider))
+	if provider == "" {
+		return DefaultProvider
+	}
+	return provider
+}
+
+func lookupAPIKey(provider string, lookup func(string) string) string {
+	for _, key := range envKeysForProvider(provider) {
+		if value := strings.TrimSpace(lookup(key)); value != "" {
+			return value
+		}
+	}
+	return ""
+}
+
+func envKeysForProvider(provider string) []string {
+	switch normalizeProvider(provider) {
+	case ProviderOpenAI:
+		return []string{"OPENAI_API_KEY"}
+	case ProviderDeepSeek:
+		return []string{"DEEPSEEK_API_KEY", "OPENAI_API_KEY"}
+	case ProviderGemini:
+		return []string{"GEMINI_API_KEY", "GOOGLE_API_KEY"}
+	default:
+		return nil
+	}
+}
+
+// NormalizeClientConfig applies provider defaults and resolves env fallback values.
+func NormalizeClientConfig(cfg ClientConfig, lookup func(string) string) (ClientConfig, error) {
+	provider := normalizeProvider(cfg.Provider)
+	if lookup == nil {
+		lookup = os.Getenv
 	}
 
-	// 创建Gemini客户端
-	ctx := context.Background()
-	client, err := genai.NewClient(ctx, option.WithAPIKey(apiKey))
+	switch provider {
+	case ProviderOpenAI, ProviderGemini, ProviderDeepSeek:
+	default:
+		return ClientConfig{}, fmt.Errorf(i18n.T(cfg.Language, "ai.unsupported_provider"), cfg.Provider)
+	}
+
+	cfg.Provider = provider
+	cfg.Language = i18n.NormalizeLanguage(cfg.Language)
+	cfg.BaseURL = strings.TrimRight(strings.TrimSpace(cfg.BaseURL), "/")
+	if cfg.BaseURL == "" {
+		cfg.BaseURL = DefaultBaseURL(provider)
+	}
+	cfg.Model = strings.TrimSpace(cfg.Model)
+	if cfg.Model == "" {
+		cfg.Model = DefaultModelName(provider)
+	}
+	cfg.APIKey = strings.TrimSpace(cfg.APIKey)
+	if cfg.APIKey == "" {
+		cfg.APIKey = lookupAPIKey(provider, lookup)
+	}
+	if cfg.APIKey == "" {
+		return ClientConfig{}, fmt.Errorf(i18n.T(cfg.Language, "ai.api_key_missing"), strings.Join(envKeysForProvider(provider), "/"))
+	}
+
+	return cfg, nil
+}
+
+// Client wraps an OpenAI-compatible chat completion client.
+type Client struct {
+	client *openai.Client
+	cfg    ClientConfig
+}
+
+func NewClient(cfg ClientConfig) (*Client, error) {
+	normalized, err := NormalizeClientConfig(cfg, os.Getenv)
 	if err != nil {
-		return nil, fmt.Errorf("创建Gemini客户端失败: %w", err)
+		return nil, err
 	}
 
-	// 使用指定的模型
-	model := client.GenerativeModel(modelName)
+	oaiCfg := openai.DefaultConfig(normalized.APIKey)
+	oaiCfg.BaseURL = normalized.BaseURL
 
-	return &GeminiClient{
-		client: client,
-		model:  model,
+	return &Client{
+		client: openai.NewClientWithConfig(oaiCfg),
+		cfg:    normalized,
 	}, nil
 }
 
-// SummarizeCommits 使用AI总结提交记录
-func (g *GeminiClient) SummarizeCommits(commits []git.CommitInfo) (string, error) {
-	return g.SummarizeCommitsWithPrompt(commits, BasicPrompt)
+func NewGeminiClient() (*Client, error) {
+	return NewClient(ClientConfig{Provider: ProviderGemini, Language: i18n.LanguageEnglish})
 }
 
-// SummarizeCommitsWithPrompt 使用指定的提示词类型总结提交记录
-func (g *GeminiClient) SummarizeCommitsWithPrompt(commits []git.CommitInfo, promptType PromptType) (string, error) {
+func NewGeminiClientWithModel(modelName string) (*Client, error) {
+	return NewClient(ClientConfig{Provider: ProviderGemini, Model: modelName, Language: i18n.LanguageEnglish})
+}
+
+func (c *Client) SummarizeCommits(commits []git.CommitInfo) (string, error) {
+	return c.SummarizeCommitsWithPrompt(commits, BasicPrompt)
+}
+
+func (c *Client) SummarizeCommitsWithPrompt(commits []git.CommitInfo, promptType PromptType) (string, error) {
 	if len(commits) == 0 {
-		return "没有找到提交记录。", nil
+		return i18n.T(c.cfg.Language, "ai.no_commits"), nil
 	}
 
-	// 获取时间范围
 	var earliestDate, latestDate time.Time
-	if len(commits) > 0 {
-		earliestDate = commits[len(commits)-1].Date
-		latestDate = commits[0].Date
-
-		// 遍历所有提交，找出最早和最晚的日期
-		for _, commit := range commits {
-			if commit.Date.Before(earliestDate) {
-				earliestDate = commit.Date
-			}
-			if commit.Date.After(latestDate) {
-				latestDate = commit.Date
-			}
+	earliestDate = commits[len(commits)-1].Date
+	latestDate = commits[0].Date
+	for _, commit := range commits {
+		if commit.Date.Before(earliestDate) {
+			earliestDate = commit.Date
+		}
+		if commit.Date.After(latestDate) {
+			latestDate = commit.Date
 		}
 	}
 
-	// 构建提示词
-	prompt := buildPromptWithTemplate(commits, earliestDate, latestDate, promptType)
-
-	// 调用Gemini API
-	ctx := context.Background()
-	resp, err := g.model.GenerateContent(ctx, genai.Text(prompt))
-	if err != nil {
-		return "", fmt.Errorf("调用Gemini API失败: %w", err)
-	}
-
-	// 提取回复
-	var result strings.Builder
-	for _, candidate := range resp.Candidates {
-		for _, part := range candidate.Content.Parts {
-			result.WriteString(fmt.Sprintf("%v", part))
-		}
-	}
-
-	return result.String(), nil
+	prompt := buildPromptWithTemplate(commits, earliestDate, latestDate, promptType, c.cfg.Language)
+	return c.generate(prompt)
 }
 
-// buildPromptWithTemplate 使用指定的提示词模板构建提示词
-func buildPromptWithTemplate(commits []git.CommitInfo, _ /*fromDate*/, _ /*toDate*/ time.Time, promptType PromptType) string {
-	// 获取提示词模板
-	template, err := loadPromptTemplate(promptType)
-	if err != nil {
-		// 如果加载模板失败，使用默认的提示词
-		fmt.Printf("警告: 加载提示词模板失败: %v, 使用默认提示词\n", err)
-		template = defaultPromptTemplate
+func (c *Client) GenerateReport(commits []git.CommitInfo, fromDate, toDate time.Time) (string, error) {
+	return c.GenerateReportWithPrompt(commits, fromDate, toDate, BasicPrompt)
+}
+
+func (c *Client) GenerateReportWithPrompt(commits []git.CommitInfo, fromDate, toDate time.Time, promptType PromptType) (string, error) {
+	if len(commits) == 0 {
+		daysDiff := toDate.Sub(fromDate).Hours() / 24
+
+		switch {
+		case daysDiff <= 1:
+			return i18n.T(c.cfg.Language, "ai.no_commits_day"), nil
+		case daysDiff <= 7:
+			return i18n.T(c.cfg.Language, "ai.no_commits_week"), nil
+		case daysDiff <= 31:
+			return i18n.T(c.cfg.Language, "ai.no_commits_month"), nil
+		case daysDiff <= 366:
+			return i18n.T(c.cfg.Language, "ai.no_commits_year"), nil
+		default:
+			return i18n.T(c.cfg.Language, "ai.no_commits_range"), nil
+		}
 	}
 
-	// 构建提交记录字符串
+	prompt := buildPromptWithTemplate(commits, fromDate, toDate, promptType, c.cfg.Language)
+	return c.generate(prompt)
+}
+
+func (c *Client) generate(prompt string) (string, error) {
+	resp, err := c.client.CreateChatCompletion(context.Background(), openai.ChatCompletionRequest{
+		Model: c.cfg.Model,
+		Messages: []openai.ChatCompletionMessage{
+			{Role: openai.ChatMessageRoleUser, Content: prompt},
+		},
+	})
+	if err != nil {
+		return "", fmt.Errorf(i18n.T(c.cfg.Language, "ai.chat_failed"), c.cfg.Provider, err)
+	}
+	if len(resp.Choices) == 0 {
+		return "", fmt.Errorf(i18n.T(c.cfg.Language, "ai.empty_response"), c.cfg.Provider)
+	}
+	return strings.TrimSpace(resp.Choices[0].Message.Content), nil
+}
+
+func (c *Client) Close() {}
+
+func buildPromptWithTemplate(commits []git.CommitInfo, _ /*fromDate*/, _ /*toDate*/ time.Time, promptType PromptType, language string) string {
+	template, err := loadPromptTemplate(promptType, language)
+	if err != nil {
+		fmt.Printf(i18n.T(language, "ai.prompt_load_warning")+"\n", err)
+		template = i18n.T(language, "ai.prompt_template")
+	}
+
 	var commitMessages strings.Builder
-
 	for i, commit := range commits {
-		// 添加提交记录
-		fmt.Fprintf(&commitMessages, "提交 %d:\n", i+1)
-		fmt.Fprintf(&commitMessages, "- 哈希值: %s\n", commit.Hash[:8])
-		fmt.Fprintf(&commitMessages, "- 作者: %s\n", commit.Author)
-		fmt.Fprintf(&commitMessages, "- 日期: %s\n", commit.Date.Format("2006-01-02 15:04:05"))
-
-		// 添加分支信息
+		fmt.Fprintf(&commitMessages, i18n.T(language, "ai.commit")+"\n", i+1)
+		fmt.Fprintf(&commitMessages, i18n.T(language, "ai.hash")+"\n", commit.Hash[:8])
+		fmt.Fprintf(&commitMessages, i18n.T(language, "ai.author")+"\n", commit.Author)
+		fmt.Fprintf(&commitMessages, i18n.T(language, "ai.date")+"\n", commit.Date.Format("2006-01-02 15:04:05"))
 		if len(commit.Branches) > 0 {
-			fmt.Fprintf(&commitMessages, "- 分支: %s\n", strings.Join(commit.Branches, ", "))
+			fmt.Fprintf(&commitMessages, i18n.T(language, "ai.branch")+"\n", strings.Join(commit.Branches, ", "))
 		}
-
-		// 添加提交消息
-		fmt.Fprintf(&commitMessages, "- 消息: %s\n", commit.Message)
-
-		// 添加变更文件
+		fmt.Fprintf(&commitMessages, i18n.T(language, "ai.message")+"\n", commit.Message)
 		if len(commit.ChangedFiles) > 0 {
-			fmt.Fprintf(&commitMessages, "- 变更文件:\n")
-			// 最多显示10个文件
+			fmt.Fprintln(&commitMessages, i18n.T(language, "ai.changed_files"))
 			maxFiles := 10
 			if len(commit.ChangedFiles) < maxFiles {
 				maxFiles = len(commit.ChangedFiles)
@@ -143,110 +247,27 @@ func buildPromptWithTemplate(commits []git.CommitInfo, _ /*fromDate*/, _ /*toDat
 				fmt.Fprintf(&commitMessages, "  * %s\n", commit.ChangedFiles[j])
 			}
 			if len(commit.ChangedFiles) > maxFiles {
-				fmt.Fprintf(&commitMessages, "  * ... 以及其他 %d 个文件\n", len(commit.ChangedFiles)-maxFiles)
+				fmt.Fprintf(&commitMessages, i18n.T(language, "ai.and_more_files")+"\n", len(commit.ChangedFiles)-maxFiles)
 			}
 		}
-
-		// 添加空行分隔不同提交
 		fmt.Fprintf(&commitMessages, "\n")
 	}
 
-	// 替换模板中的变量
-	prompt := strings.ReplaceAll(template, "{{.CommitMessages}}", commitMessages.String())
-
-	return prompt
+	return strings.ReplaceAll(template, "{{.CommitMessages}}", commitMessages.String())
 }
 
-// GenerateReport 根据提交记录和时间范围生成报告
-func (g *GeminiClient) GenerateReport(commits []git.CommitInfo, fromDate, toDate time.Time) (string, error) {
-	return g.GenerateReportWithPrompt(commits, fromDate, toDate, BasicPrompt)
-}
-
-// GenerateReportWithPrompt 使用指定的提示词类型生成报告
-func (g *GeminiClient) GenerateReportWithPrompt(commits []git.CommitInfo, fromDate, toDate time.Time, promptType PromptType) (string, error) {
-	// 这个方法实际上是对SummarizeCommits的封装，提供更明确的接口
-	if len(commits) == 0 {
-		// 根据时间范围返回不同的消息
-		daysDiff := toDate.Sub(fromDate).Hours() / 24
-		var periodType string
-
-		switch {
-		case daysDiff <= 1:
-			periodType = "今日"
-		case daysDiff <= 7:
-			periodType = "本周"
-		case daysDiff <= 31:
-			periodType = "本月"
-		case daysDiff <= 366:
-			periodType = "本年"
-		default:
-			periodType = "指定时间范围内"
-		}
-
-		return fmt.Sprintf("%s没有提交记录。", periodType), nil
-	}
-
-	// 构建提示词
-	prompt := buildPromptWithTemplate(commits, fromDate, toDate, promptType)
-
-	// 调用Gemini API
-	ctx := context.Background()
-	resp, err := g.model.GenerateContent(ctx, genai.Text(prompt))
-	if err != nil {
-		return "", fmt.Errorf("调用Gemini API失败: %w", err)
-	}
-
-	// 提取回复
-	var result strings.Builder
-	for _, candidate := range resp.Candidates {
-		for _, part := range candidate.Content.Parts {
-			result.WriteString(fmt.Sprintf("%v", part))
-		}
-	}
-
-	return result.String(), nil
-}
-
-// Close 关闭Gemini客户端
-func (g *GeminiClient) Close() {
-	if g.client != nil {
-		g.client.Close()
-	}
-}
-
-// 默认提示词模板
-const defaultPromptTemplate = `你是一位专业的工作报告生成助手。请根据以下Git提交记录，生成一份简洁的工作摘要。
-
-提交记录：
-{{.CommitMessages}}
-
-请提供：
-1. 一个简短的总体工作概述（不超过3句话）
-2. 3-5个关键工作成就或完成的任务
-3. 任何明显的工作主题或模式
-
-保持简洁明了，重点突出实际完成的工作。`
-
-// loadPromptTemplate 从文件加载提示词模板
-func loadPromptTemplate(promptType PromptType) (string, error) {
-	// 检查是否为自定义提示词
+func loadPromptTemplate(promptType PromptType, language string) (string, error) {
 	if IsCustomPrompt(promptType) {
-		// 自定义提示词，从文件加载
-		customPrompt, err := LoadCustomPrompt(string(promptType))
+		customPrompt, err := LoadCustomPrompt(string(promptType), language)
 		if err != nil {
-			return "", fmt.Errorf("加载自定义提示词失败: %w", err)
+			return "", fmt.Errorf(i18n.T(language, "ai.load_custom_prompt"), err)
 		}
-
-		// 确保自定义提示词包含占位符
 		if !strings.Contains(customPrompt, "{{.CommitMessages}}") {
-			// 如果没有占位符，在末尾添加
-			customPrompt += "\n\n提交记录：\n{{.CommitMessages}}"
+			customPrompt += "\n\n" + i18n.T(language, "ai.commit_history") + ":\n{{.CommitMessages}}"
 		}
-
 		return customPrompt, nil
 	}
 
-	// 预设提示词，根据提示词类型确定文件名
 	var filename string
 	switch promptType {
 	case BasicPrompt:
@@ -259,37 +280,45 @@ func loadPromptTemplate(promptType PromptType) (string, error) {
 		filename = "basic.txt"
 	}
 
-	// 尝试从多个可能的位置加载模板
-	cwd, err := os.Getwd()
-	if err != nil {
-		return "", fmt.Errorf("获取当前目录失败: %w", err)
-	}
-
-	// 尝试从多个可能的位置加载模板
-	paths := []string{
-		fmt.Sprintf("%s/prompts/%s", cwd, filename),                                 // 当前目录下的prompts目录
-		fmt.Sprintf("%s/../prompts/%s", cwd, filename),                              // 上级目录下的prompts目录
-		fmt.Sprintf("%s/../../prompts/%s", cwd, filename),                           // 上上级目录下的prompts目录
-		fmt.Sprintf("/Users/cola/code/kway-teow/git-work-log/prompts/%s", filename), // 项目根目录
-	}
-
+	paths := candidatePromptPaths(filename)
 	var content []byte
 	var loadErr error
-
-	// 尝试每个路径
 	for _, path := range paths {
 		content, loadErr = loadPromptTemplateFromPath(path)
 		if loadErr == nil {
-			// 成功加载模板
 			return string(content), nil
 		}
 	}
 
-	// 所有路径都失败了，返回最后一个错误
-	return "", fmt.Errorf("无法加载提示词模板: %w", loadErr)
+	return "", fmt.Errorf(i18n.T(language, "ai.load_custom_prompt"), loadErr)
 }
 
-// loadPromptTemplateFromPath 从指定路径加载提示词模板
 func loadPromptTemplateFromPath(path string) ([]byte, error) {
 	return os.ReadFile(path)
+}
+
+func candidatePromptPaths(filename string) []string {
+	roots := make([]string, 0, 8)
+	if cwd, err := os.Getwd(); err == nil {
+		roots = append(roots, cwd, filepath.Dir(cwd), filepath.Dir(filepath.Dir(cwd)))
+	}
+	if execPath, err := os.Executable(); err == nil {
+		binDir := filepath.Dir(execPath)
+		roots = append(roots, binDir, filepath.Dir(binDir), filepath.Dir(filepath.Dir(binDir)))
+	}
+
+	paths := make([]string, 0, len(roots))
+	seen := make(map[string]struct{})
+	for _, root := range roots {
+		if root == "" {
+			continue
+		}
+		p := filepath.Join(root, "prompts", filename)
+		if _, ok := seen[p]; ok {
+			continue
+		}
+		seen[p] = struct{}{}
+		paths = append(paths, p)
+	}
+	return paths
 }

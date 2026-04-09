@@ -1,4 +1,4 @@
-# git-work-log Lefthook配置
+# git-digest Lefthook配置
 # 详细文档: https://lefthook.dev/configuration/
 
 # 提交前钩子

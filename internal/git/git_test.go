@@ -4,6 +4,8 @@ import (
 	"os"
 	"os/exec"
 	"testing"
+
+	"github.com/kway-teow/git-digest/internal/i18n"
 )
 
 // TestNewGitOptions 测试创建新的Git选项
@@ -28,7 +30,7 @@ func TestParseCommits(t *testing.T) {
 	testOutput := "abc123|John Doe|2023-01-01 12:00:00 +0800|Initial commit|HEAD -> main, origin/main\n" +
 		"def456|Jane Smith|2023-01-02 13:00:00 +0800|Add feature|refs/heads/feature, tag: v1.0.0"
 
-	commits, err := parseCommits(testOutput)
+	commits, err := parseCommits(testOutput, i18n.LanguageEnglish)
 	if err != nil {
 		t.Fatalf("解析提交失败: %v", err)
 	}
@@ -79,7 +81,7 @@ func TestGetGitUserName(t *testing.T) {
 	}
 
 	// 测试获取用户名
-	name, err := GetGitUserName("")
+	name, err := GetGitUserName("", i18n.LanguageEnglish)
 	if err != nil {
 		// 这不一定是错误，可能只是没有配置git用户名
 		t.Logf("获取Git用户名失败: %v", err)

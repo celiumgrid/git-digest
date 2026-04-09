@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/kway-teow/git-digest/internal/i18n"
 )
 
 // PromptType 表示不同类型的提示词
@@ -42,31 +44,31 @@ func IsCustomPrompt(promptType PromptType) bool {
 }
 
 // LoadCustomPrompt 加载自定义提示词文件
-func LoadCustomPrompt(filePath string) (string, error) {
+func LoadCustomPrompt(filePath, language string) (string, error) {
 	// 检查文件是否存在
 	if !filepath.IsAbs(filePath) {
 		// 如果是相对路径，转换为绝对路径
 		cwd, err := os.Getwd()
 		if err != nil {
-			return "", fmt.Errorf("获取当前目录失败: %w", err)
+			return "", fmt.Errorf(i18n.T(language, "ai.getcwd"), err)
 		}
 		filePath = filepath.Join(cwd, filePath)
 	}
 
 	// 检查文件是否存在
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		return "", fmt.Errorf("自定义提示词文件不存在: %s", filePath)
+		return "", fmt.Errorf(i18n.T(language, "ai.custom_prompt_missing"), filePath)
 	}
 
 	// 读取文件内容
 	content, err := os.ReadFile(filePath)
 	if err != nil {
-		return "", fmt.Errorf("读取自定义提示词文件失败: %w", err)
+		return "", fmt.Errorf(i18n.T(language, "ai.custom_prompt_read"), err)
 	}
 
 	promptContent := strings.TrimSpace(string(content))
 	if promptContent == "" {
-		return "", fmt.Errorf("自定义提示词文件为空: %s", filePath)
+		return "", fmt.Errorf(i18n.T(language, "ai.custom_prompt_empty"), filePath)
 	}
 
 	// 确保提示词末尾有一个换行符，以便后续添加提交记录

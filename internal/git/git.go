@@ -7,16 +7,24 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/kway-teow/git-digest/internal/i18n"
 )
 
 // Options Git操作的选项
 type Options struct {
 	RepoPath string // Git仓库路径
 	Author   string // 作者名称，用于筛选提交
+	Language string
 }
 
 // NewGitOptions 创建新的Git选项
 func NewGitOptions(repoPath string) *Options {
+	return NewGitOptionsWithLanguage(repoPath, i18n.LanguageEnglish)
+}
+
+// NewGitOptionsWithLanguage 创建带语言信息的Git选项
+func NewGitOptionsWithLanguage(repoPath, language string) *Options {
 	// 如果没有指定路径，使用当前目录
 	if repoPath == "" {
 		repoPath = "."
@@ -25,10 +33,11 @@ func NewGitOptions(repoPath string) *Options {
 	// 创建Git选项
 	opts := &Options{
 		RepoPath: repoPath,
+		Language: i18n.NormalizeLanguage(language),
 	}
 
 	// 获取当前用户的Git用户名
-	author, err := GetGitUserName(repoPath)
+	author, err := GetGitUserName(repoPath, opts.Language)
 	if err == nil && author != "" {
 		opts.Author = author
 	}
@@ -49,9 +58,10 @@ type CommitInfo struct {
 
 // GetCommitsBetween 获取指定时间范围内的所有提交
 func GetCommitsBetween(fromDate, toDate time.Time, opts *Options) ([]CommitInfo, error) {
+	language := optionLanguage(opts)
 	// 格式化日期为git log可接受的格式
-	fromStr := fromDate.Format("2006-01-02")
-	toStr := toDate.Format("2006-01-02")
+	fromStr := fromDate.Format(time.RFC3339)
+	toStr := toDate.Format(time.RFC3339)
 
 	// 构建git log命令的参数列表
 	args := []string{
@@ -59,8 +69,8 @@ func GetCommitsBetween(fromDate, toDate time.Time, opts *Options) ([]CommitInfo,
 		"--all",                            // 获取所有分支的提交
 		"--pretty=format:%H|%an|%ad|%s|%D", // 添加%D获取分支信息
 		"--date=iso",
-		"--after=" + fromStr,
-		"--before=" + toStr,
+		"--since=" + fromStr,
+		"--until=" + toStr,
 	}
 
 	// 如果指定了作者，添加作者筛选条件
@@ -79,11 +89,11 @@ func GetCommitsBetween(fromDate, toDate time.Time, opts *Options) ([]CommitInfo,
 	// 执行命令
 	output, err := cmd.Output()
 	if err != nil {
-		return nil, fmt.Errorf("执行git log失败: %w", err)
+		return nil, fmt.Errorf(i18n.T(language, "git.exec_log"), err)
 	}
 
 	// 解析输出
-	return parseCommits(string(output))
+	return parseCommits(string(output), language)
 }
 
 // GetCommitsThisWeek 获取本周的所有提交
@@ -107,6 +117,7 @@ func GetCommitsThisWeek(opts *Options) ([]CommitInfo, error) {
 
 // GetCommitDetails 获取指定提交的详细信息
 func GetCommitDetails(hash string, opts *Options) (*CommitInfo, error) {
+	language := optionLanguage(opts)
 	// 获取提交的基本信息
 	cmd := exec.Command("git", "show",
 		"--pretty=format:%H|%an|%ad|%s|%D",
@@ -120,13 +131,13 @@ func GetCommitDetails(hash string, opts *Options) (*CommitInfo, error) {
 
 	output, err := cmd.Output()
 	if err != nil {
-		return nil, fmt.Errorf("获取提交详情失败: %w", err)
+		return nil, fmt.Errorf(i18n.T(language, "git.commit_details"), err)
 	}
 
 	// 解析提交信息
-	commits, err := parseCommits(string(output))
+	commits, err := parseCommits(string(output), language)
 	if err != nil || len(commits) == 0 {
-		return nil, fmt.Errorf("解析提交详情失败: %w", err)
+		return nil, fmt.Errorf(i18n.T(language, "git.parse_commit_details"), err)
 	}
 
 	commit := commits[0]
@@ -141,7 +152,7 @@ func GetCommitDetails(hash string, opts *Options) (*CommitInfo, error) {
 
 	outputFiles, err := cmdFiles.Output()
 	if err != nil {
-		return nil, fmt.Errorf("获取变更文件列表失败: %w", err)
+		return nil, fmt.Errorf(i18n.T(language, "git.changed_files"), err)
 	}
 
 	// 解析变更文件列表
@@ -152,7 +163,7 @@ func GetCommitDetails(hash string, opts *Options) (*CommitInfo, error) {
 }
 
 // GetGitUserName 获取Git用户名
-func GetGitUserName(repoPath string) (string, error) {
+func GetGitUserName(repoPath, language string) (string, error) {
 	// 构建git config命令获取用户名
 	cmd := exec.Command("git", "config", "user.name")
 
@@ -168,7 +179,7 @@ func GetGitUserName(repoPath string) (string, error) {
 		cmdGlobal := exec.Command("git", "config", "--global", "user.name")
 		output, err = cmdGlobal.Output()
 		if err != nil {
-			return "", fmt.Errorf("获取Git用户名失败: %w", err)
+			return "", fmt.Errorf(i18n.T(language, "git.git_user"), err)
 		}
 	}
 
@@ -177,7 +188,7 @@ func GetGitUserName(repoPath string) (string, error) {
 }
 
 // parseCommits 解析git log的输出
-func parseCommits(output string) ([]CommitInfo, error) {
+func parseCommits(output string, language string) ([]CommitInfo, error) {
 	lines := strings.Split(strings.TrimSpace(output), "\n")
 	commits := make([]CommitInfo, 0, len(lines))
 
@@ -200,7 +211,7 @@ func parseCommits(output string) ([]CommitInfo, error) {
 		// 解析日期
 		date, err := time.Parse("2006-01-02 15:04:05 -0700", dateStr)
 		if err != nil {
-			return nil, fmt.Errorf("解析日期失败: %w", err)
+			return nil, fmt.Errorf(i18n.T(language, "git.parse_date"), err)
 		}
 
 		// 解析分支信息
@@ -254,9 +265,17 @@ func parseCommits(output string) ([]CommitInfo, error) {
 	return commits, nil
 }
 
+func optionLanguage(opts *Options) string {
+	if opts == nil {
+		return i18n.LanguageEnglish
+	}
+	return i18n.NormalizeLanguage(opts.Language)
+}
+
 // DiscoverGitRepos 发现指定目录下的所有Git仓库
-func DiscoverGitRepos(rootPath string) ([]string, error) {
+func DiscoverGitRepos(rootPath, language string) ([]string, error) {
 	var repos []string
+	language = i18n.NormalizeLanguage(language)
 
 	// 如果根路径为空，使用当前目录
 	if rootPath == "" {
@@ -266,7 +285,7 @@ func DiscoverGitRepos(rootPath string) ([]string, error) {
 	// 获取绝对路径
 	absRootPath, err := filepath.Abs(rootPath)
 	if err != nil {
-		return nil, fmt.Errorf("无法获取绝对路径: %w", err)
+		return nil, fmt.Errorf(i18n.T(language, "git.abs_path"), err)
 	}
 
 	// 定义要跳过的目录（常见的非Git仓库目录）
@@ -299,7 +318,7 @@ func DiscoverGitRepos(rootPath string) ([]string, error) {
 		"*.log":            true,
 	}
 
-	fmt.Printf("正在扫描目录: %s\n", absRootPath)
+	fmt.Printf(i18n.T(language, "git.scan_dir")+"\n", absRootPath)
 
 	// 遍历目录
 	err = filepath.Walk(absRootPath, func(path string, info os.FileInfo, err error) error {
@@ -314,7 +333,7 @@ func DiscoverGitRepos(rootPath string) ([]string, error) {
 			if info.Name() == ".git" {
 				repoPath := filepath.Dir(path)
 				repos = append(repos, repoPath)
-				fmt.Printf("  发现Git仓库: %s\n", repoPath)
+				fmt.Printf(i18n.T(language, "git.found_repo")+"\n", repoPath)
 				// 跳过.git目录的子目录遍历
 				return filepath.SkipDir
 			}
@@ -342,9 +361,9 @@ func DiscoverGitRepos(rootPath string) ([]string, error) {
 	})
 
 	if err != nil {
-		return nil, fmt.Errorf("遍历目录失败: %w", err)
+		return nil, fmt.Errorf(i18n.T(language, "git.walk"), err)
 	}
 
-	fmt.Printf("扫描完成，共发现 %d 个Git仓库\n", len(repos))
+	fmt.Printf(i18n.T(language, "git.scan_done")+"\n", len(repos))
 	return repos, nil
 }
