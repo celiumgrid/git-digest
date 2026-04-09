@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kway-teow/git-digest/internal/git"
-	"github.com/kway-teow/git-digest/internal/timequery"
+	"github.com/celiumgrid/git-digest/internal/git"
+	"github.com/celiumgrid/git-digest/internal/timequery"
 )
 
 func TestGenerateTextReportUsesWindowLabel(t *testing.T) {

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kway-teow/git-digest/internal/i18n"
+	"github.com/celiumgrid/git-digest/internal/i18n"
 )
 
 // Options Git操作的选项

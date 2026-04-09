@@ -5,9 +5,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/kway-teow/git-digest/internal/app"
-	"github.com/kway-teow/git-digest/internal/i18n"
-	"github.com/kway-teow/git-digest/internal/timequery"
+	"github.com/celiumgrid/git-digest/internal/app"
+	"github.com/celiumgrid/git-digest/internal/i18n"
+	"github.com/celiumgrid/git-digest/internal/timequery"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )

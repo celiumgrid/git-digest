@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/kway-teow/git-digest/internal/i18n"
+	"github.com/celiumgrid/git-digest/internal/i18n"
 )
 
 func LoadConfig(path, language string) (Config, error) {

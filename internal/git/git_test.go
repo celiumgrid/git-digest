@@ -5,7 +5,7 @@ import (
 	"os/exec"
 	"testing"
 
-	"github.com/kway-teow/git-digest/internal/i18n"
+	"github.com/celiumgrid/git-digest/internal/i18n"
 )
 
 // TestNewGitOptions 测试创建新的Git选项

@@ -1,4 +1,4 @@
-module github.com/kway-teow/git-digest
+module github.com/celiumgrid/git-digest
 
 go 1.24.1
 

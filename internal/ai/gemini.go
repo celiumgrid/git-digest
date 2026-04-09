@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kway-teow/git-digest/internal/git"
-	"github.com/kway-teow/git-digest/internal/i18n"
+	"github.com/celiumgrid/git-digest/internal/git"
+	"github.com/celiumgrid/git-digest/internal/i18n"
 	openai "github.com/sashabaranov/go-openai"
 )
 

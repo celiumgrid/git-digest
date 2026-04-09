@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/kway-teow/git-digest/internal/ai"
-	"github.com/kway-teow/git-digest/internal/i18n"
-	"github.com/kway-teow/git-digest/internal/timequery"
+	"github.com/celiumgrid/git-digest/internal/ai"
+	"github.com/celiumgrid/git-digest/internal/i18n"
+	"github.com/celiumgrid/git-digest/internal/timequery"
 )
 
 // Config is the unified runtime configuration.

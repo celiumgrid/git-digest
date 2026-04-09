@@ -21,7 +21,7 @@ Language docs:
 Go is the only supported distribution path.
 
 ```bash
-go install github.com/kway-teow/git-digest/cmd/git-digest@latest
+go install github.com/celiumgrid/git-digest/cmd/git-digest@latest
 ```
 
 ## Quick Start

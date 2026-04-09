@@ -3,8 +3,8 @@ package app
 import (
 	"testing"
 
-	"github.com/kway-teow/git-digest/internal/ai"
-	"github.com/kway-teow/git-digest/internal/timequery"
+	"github.com/celiumgrid/git-digest/internal/ai"
+	"github.com/celiumgrid/git-digest/internal/timequery"
 )
 
 func TestShouldUseInteractive(t *testing.T) {
