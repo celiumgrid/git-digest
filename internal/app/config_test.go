@@ -84,14 +84,40 @@ func TestMergeConfigPriority(t *testing.T) {
 	if merged.Provider != ai.ProviderDeepSeek {
 		t.Fatalf("provider should come from cli, got %q", merged.Provider)
 	}
-	if merged.BaseURL != "https://example.com/v1" {
-		t.Fatalf("base url should come from config file, got %q", merged.BaseURL)
+	if merged.BaseURL != ai.DefaultBaseURL(ai.ProviderDeepSeek) {
+		t.Fatalf("base url should reset to the selected provider default, got %q", merged.BaseURL)
 	}
 	if merged.APIKey != "cli-key" {
 		t.Fatalf("api key should come from cli, got %q", merged.APIKey)
 	}
-	if merged.Model != "file-model" {
-		t.Fatalf("model should come from config file, got %q", merged.Model)
+	if merged.Model != ai.DefaultModelName(ai.ProviderDeepSeek) {
+		t.Fatalf("model should reset to the selected provider default, got %q", merged.Model)
+	}
+}
+
+func TestMergeConfigResetsProviderDefaultsWhenProviderChanges(t *testing.T) {
+	base := DefaultConfig()
+	fileCfg := Config{
+		Provider: ai.ProviderOpenAI,
+		BaseURL:  ai.DefaultBaseURL(ai.ProviderOpenAI),
+		Model:    ai.DefaultModelName(ai.ProviderOpenAI),
+	}
+	cli := Config{
+		Provider: ai.ProviderGemini,
+	}
+	changed := map[string]bool{
+		"provider": true,
+	}
+
+	merged := MergeConfig(base, fileCfg, cli, changed)
+	if merged.Provider != ai.ProviderGemini {
+		t.Fatalf("provider should be overridden by cli, got %q", merged.Provider)
+	}
+	if merged.BaseURL != ai.DefaultBaseURL(ai.ProviderGemini) {
+		t.Fatalf("base url should reset to new provider default, got %q", merged.BaseURL)
+	}
+	if merged.Model != ai.DefaultModelName(ai.ProviderGemini) {
+		t.Fatalf("model should reset to new provider default, got %q", merged.Model)
 	}
 }
 

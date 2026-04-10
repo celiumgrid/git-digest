@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -172,7 +171,10 @@ func (c *Client) SummarizeCommitsWithPrompt(commits []git.CommitInfo, promptType
 		}
 	}
 
-	prompt := buildPromptWithTemplate(commits, earliestDate, latestDate, promptType, c.cfg.Language)
+	prompt, err := buildPromptWithTemplate(commits, earliestDate, latestDate, promptType, c.cfg.Language)
+	if err != nil {
+		return "", err
+	}
 	return c.generate(prompt)
 }
 
@@ -198,7 +200,10 @@ func (c *Client) GenerateReportWithPrompt(commits []git.CommitInfo, fromDate, to
 		}
 	}
 
-	prompt := buildPromptWithTemplate(commits, fromDate, toDate, promptType, c.cfg.Language)
+	prompt, err := buildPromptWithTemplate(commits, fromDate, toDate, promptType, c.cfg.Language)
+	if err != nil {
+		return "", err
+	}
 	return c.generate(prompt)
 }
 
@@ -220,11 +225,10 @@ func (c *Client) generate(prompt string) (string, error) {
 
 func (c *Client) Close() {}
 
-func buildPromptWithTemplate(commits []git.CommitInfo, _ /*fromDate*/, _ /*toDate*/ time.Time, promptType PromptType, language string) string {
+func buildPromptWithTemplate(commits []git.CommitInfo, _ /*fromDate*/, _ /*toDate*/ time.Time, promptType PromptType, language string) (string, error) {
 	template, err := loadPromptTemplate(promptType, language)
 	if err != nil {
-		fmt.Printf(i18n.T(language, "ai.prompt_load_warning")+"\n", err)
-		template = i18n.T(language, "ai.prompt_template")
+		return "", err
 	}
 
 	var commitMessages strings.Builder
@@ -253,7 +257,7 @@ func buildPromptWithTemplate(commits []git.CommitInfo, _ /*fromDate*/, _ /*toDat
 		fmt.Fprintf(&commitMessages, "\n")
 	}
 
-	return strings.ReplaceAll(template, "{{.CommitMessages}}", commitMessages.String())
+	return strings.ReplaceAll(template, "{{.CommitMessages}}", commitMessages.String()), nil
 }
 
 func loadPromptTemplate(promptType PromptType, language string) (string, error) {
@@ -280,45 +284,13 @@ func loadPromptTemplate(promptType PromptType, language string) (string, error) 
 		filename = "basic.txt"
 	}
 
-	paths := candidatePromptPaths(filename)
-	var content []byte
-	var loadErr error
-	for _, path := range paths {
-		content, loadErr = loadPromptTemplateFromPath(path)
-		if loadErr == nil {
-			return string(content), nil
-		}
+	content, err := loadBuiltInPrompt(filename)
+	if err != nil {
+		return "", fmt.Errorf(i18n.T(language, "ai.load_custom_prompt"), err)
 	}
-
-	return "", fmt.Errorf(i18n.T(language, "ai.load_custom_prompt"), loadErr)
+	return content, nil
 }
 
 func loadPromptTemplateFromPath(path string) ([]byte, error) {
 	return os.ReadFile(path)
-}
-
-func candidatePromptPaths(filename string) []string {
-	roots := make([]string, 0, 8)
-	if cwd, err := os.Getwd(); err == nil {
-		roots = append(roots, cwd, filepath.Dir(cwd), filepath.Dir(filepath.Dir(cwd)))
-	}
-	if execPath, err := os.Executable(); err == nil {
-		binDir := filepath.Dir(execPath)
-		roots = append(roots, binDir, filepath.Dir(binDir), filepath.Dir(filepath.Dir(binDir)))
-	}
-
-	paths := make([]string, 0, len(roots))
-	seen := make(map[string]struct{})
-	for _, root := range roots {
-		if root == "" {
-			continue
-		}
-		p := filepath.Join(root, "prompts", filename)
-		if _, ok := seen[p]; ok {
-			continue
-		}
-		seen[p] = struct{}{}
-		paths = append(paths, p)
-	}
-	return paths
 }

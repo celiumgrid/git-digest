@@ -1,13 +1,18 @@
 package ai
 
 import (
+	"embed"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/celiumgrid/git-digest/internal/i18n"
 	"github.com/celiumgrid/git-digest/internal/pathutil"
 )
+
+//go:embed prompts/*.txt
+var builtInPromptFS embed.FS
 
 // PromptType 表示不同类型的提示词
 type PromptType string
@@ -75,4 +80,12 @@ func LoadCustomPrompt(filePath, language string) (string, error) {
 	}
 
 	return promptContent, nil
+}
+
+func loadBuiltInPrompt(filename string) (string, error) {
+	content, err := builtInPromptFS.ReadFile(filepath.Join("prompts", filename))
+	if err != nil {
+		return "", err
+	}
+	return string(content), nil
 }

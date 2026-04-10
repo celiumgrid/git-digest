@@ -4,7 +4,9 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
+	"github.com/celiumgrid/git-digest/internal/git"
 	"github.com/celiumgrid/git-digest/internal/i18n"
 )
 
@@ -81,5 +83,47 @@ func TestLoadCustomPromptExpandsTilde(t *testing.T) {
 
 	if content != "custom prompt\n" {
 		t.Fatalf("unexpected prompt content: %q", content)
+	}
+}
+
+func TestLoadBuiltInPromptDoesNotDependOnWorkingDirectory(t *testing.T) {
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("failed to get working directory: %v", err)
+	}
+	t.Cleanup(func() {
+		if chdirErr := os.Chdir(wd); chdirErr != nil {
+			t.Fatalf("failed to restore working directory: %v", chdirErr)
+		}
+	})
+
+	if err := os.Chdir(t.TempDir()); err != nil {
+		t.Fatalf("failed to change working directory: %v", err)
+	}
+
+	content, err := loadPromptTemplate(BasicPrompt, i18n.LanguageEnglish)
+	if err != nil {
+		t.Fatalf("built-in prompt should still load outside the repo root: %v", err)
+	}
+	if content == "" {
+		t.Fatal("built-in prompt should not be empty")
+	}
+}
+
+func TestBuildPromptWithTemplateFailsForMissingCustomPrompt(t *testing.T) {
+	_, err := buildPromptWithTemplate(
+		[]git.CommitInfo{{
+			Hash:    "12345678",
+			Author:  "cola",
+			Date:    time.Date(2026, 4, 10, 10, 0, 0, 0, time.UTC),
+			Message: "feat: prompt test",
+		}},
+		time.Time{},
+		time.Time{},
+		PromptType("/tmp/does-not-exist.txt"),
+		i18n.LanguageEnglish,
+	)
+	if err == nil {
+		t.Fatal("expected missing custom prompt to return error")
 	}
 }

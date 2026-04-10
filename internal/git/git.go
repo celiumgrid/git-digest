@@ -11,6 +11,12 @@ import (
 	"github.com/celiumgrid/git-digest/internal/i18n"
 )
 
+const (
+	gitLogFieldSep  = "\x1f"
+	gitLogRecordSep = "\x1e"
+	gitPrettyFormat = "%H%x1f%an%x1f%ad%x1f%s%x1f%D%x1e"
+)
+
 // Options Git操作的选项
 type Options struct {
 	RepoPath string // Git仓库路径
@@ -66,8 +72,8 @@ func GetCommitsBetween(fromDate, toDate time.Time, opts *Options) ([]CommitInfo,
 	// 构建git log命令的参数列表
 	args := []string{
 		"log",
-		"--all",                            // 获取所有分支的提交
-		"--pretty=format:%H|%an|%ad|%s|%D", // 添加%D获取分支信息
+		"--all", // 获取所有分支的提交
+		"--pretty=format:" + gitPrettyFormat,
 		"--date=iso",
 		"--since=" + fromStr,
 		"--until=" + toStr,
@@ -120,7 +126,7 @@ func GetCommitDetails(hash string, opts *Options) (*CommitInfo, error) {
 	language := optionLanguage(opts)
 	// 获取提交的基本信息
 	cmd := exec.Command("git", "show",
-		"--pretty=format:%H|%an|%ad|%s|%D",
+		"--pretty=format:"+gitPrettyFormat,
 		"--date=iso",
 		hash)
 
@@ -156,8 +162,10 @@ func GetCommitDetails(hash string, opts *Options) (*CommitInfo, error) {
 	}
 
 	// 解析变更文件列表
-	files := strings.Split(strings.TrimSpace(string(outputFiles)), "\n")
-	commit.ChangedFiles = files
+	fileOutput := strings.TrimSpace(string(outputFiles))
+	if fileOutput != "" {
+		commit.ChangedFiles = strings.Split(fileOutput, "\n")
+	}
 
 	return &commit, nil
 }
@@ -189,15 +197,16 @@ func GetGitUserName(repoPath, language string) (string, error) {
 
 // parseCommits 解析git log的输出
 func parseCommits(output string, language string) ([]CommitInfo, error) {
-	lines := strings.Split(strings.TrimSpace(output), "\n")
-	commits := make([]CommitInfo, 0, len(lines))
+	records := strings.Split(strings.TrimSpace(output), gitLogRecordSep)
+	commits := make([]CommitInfo, 0, len(records))
 
-	for _, line := range lines {
-		if line == "" {
+	for _, record := range records {
+		record = strings.TrimSpace(record)
+		if record == "" {
 			continue
 		}
 
-		parts := strings.SplitN(line, "|", 5) // 增加了分支信息字段
+		parts := strings.SplitN(record, gitLogFieldSep, 5)
 		if len(parts) < 5 {
 			continue
 		}
@@ -318,8 +327,6 @@ func DiscoverGitRepos(rootPath, language string) ([]string, error) {
 		"*.log":            true,
 	}
 
-	fmt.Printf(i18n.T(language, "git.scan_dir")+"\n", absRootPath)
-
 	// 遍历目录
 	err = filepath.Walk(absRootPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -333,7 +340,6 @@ func DiscoverGitRepos(rootPath, language string) ([]string, error) {
 			if info.Name() == ".git" {
 				repoPath := filepath.Dir(path)
 				repos = append(repos, repoPath)
-				fmt.Printf(i18n.T(language, "git.found_repo")+"\n", repoPath)
 				// 跳过.git目录的子目录遍历
 				return filepath.SkipDir
 			}
@@ -363,7 +369,5 @@ func DiscoverGitRepos(rootPath, language string) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf(i18n.T(language, "git.walk"), err)
 	}
-
-	fmt.Printf(i18n.T(language, "git.scan_done")+"\n", len(repos))
 	return repos, nil
 }

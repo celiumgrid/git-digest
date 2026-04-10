@@ -27,8 +27,8 @@ func TestNewGitOptions(t *testing.T) {
 // TestParseCommits 测试解析git log输出
 func TestParseCommits(t *testing.T) {
 	// 模拟git log输出
-	testOutput := "abc123|John Doe|2023-01-01 12:00:00 +0800|Initial commit|HEAD -> main, origin/main\n" +
-		"def456|Jane Smith|2023-01-02 13:00:00 +0800|Add feature|refs/heads/feature, tag: v1.0.0"
+	testOutput := "abc123\x1fJohn Doe\x1f2023-01-01 12:00:00 +0800\x1fInitial commit\x1fHEAD -> main, origin/main\x1e" +
+		"def456\x1fJane Smith\x1f2023-01-02 13:00:00 +0800\x1fAdd feature\x1frefs/heads/feature, tag: v1.0.0\x1e"
 
 	commits, err := parseCommits(testOutput, i18n.LanguageEnglish)
 	if err != nil {
@@ -64,6 +64,24 @@ func TestParseCommits(t *testing.T) {
 	}
 	if !contains(commits[1].Branches, "feature") {
 		t.Errorf("第二个提交应包含 'feature' 分支, 得到: %v", commits[1].Branches)
+	}
+}
+
+func TestParseCommitsPreservesPipeInSubject(t *testing.T) {
+	testOutput := "abc123\x1fJohn Doe\x1f2023-01-01 12:00:00 +0800\x1ffeat: a | b\x1fHEAD -> main\x1e"
+
+	commits, err := parseCommits(testOutput, i18n.LanguageEnglish)
+	if err != nil {
+		t.Fatalf("parseCommits returned error: %v", err)
+	}
+	if len(commits) != 1 {
+		t.Fatalf("expected one commit, got %d", len(commits))
+	}
+	if commits[0].Message != "feat: a | b" {
+		t.Fatalf("expected subject with pipe to be preserved, got %q", commits[0].Message)
+	}
+	if !contains(commits[0].Branches, "main") {
+		t.Fatalf("expected branch parsing to keep main, got %v", commits[0].Branches)
 	}
 }
 

@@ -83,7 +83,6 @@ func (g *Generator) generateTextReport(summary string, commits []git.CommitInfo,
 }
 
 func (g *Generator) generateMarkdownReport(summary string, commits []git.CommitInfo, window timequery.Window, language string) error {
-	fileName := fmt.Sprintf("report-%s-to-%s.md", window.Start.Format("2006-01-02"), window.End.Format("2006-01-02"))
 	fmt.Fprintf(g.Output, "# %s (%s %s %s)\n\n", window.Label, window.Start.Format("2006-01-02"), word(language, "to", "至"), window.End.Format("2006-01-02"))
 
 	repoStats := make(map[string]int)
@@ -129,9 +128,6 @@ func (g *Generator) generateMarkdownReport(summary string, commits []git.CommitI
 		fmt.Fprintln(g.Output)
 	}
 
-	if g.Output != os.Stdout {
-		fmt.Printf("%s: %s\n", word(language, "Generated markdown report", "已生成Markdown报告"), fileName)
-	}
 	return nil
 }
 

@@ -75,6 +75,14 @@ func MergeConfig(base, fileCfg, cliCfg Config, changed map[string]bool) Config {
 		merged.ReposPath = cliCfg.ReposPath
 	}
 	if changed["provider"] {
+		if merged.Provider != cliCfg.Provider {
+			if !changed["base-url"] {
+				merged.BaseURL = ""
+			}
+			if !changed["model"] {
+				merged.Model = ""
+			}
+		}
 		merged.Provider = cliCfg.Provider
 	}
 	if changed["base-url"] {

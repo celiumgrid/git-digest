@@ -18,7 +18,7 @@ Language docs:
 
 ## Installation
 
-Go is the only supported distribution path.
+Go is the only supported distribution path. The built-in prompt templates are embedded in the binary, so `go install` is self-contained.
 
 ```bash
 go install github.com/celiumgrid/git-digest/cmd/git-digest@latest
@@ -149,6 +149,8 @@ Built-in prompt types:
 - `basic`
 - `detailed`
 - `targeted`
+
+These built-in templates are embedded in the binary.
 
 You can also pass a custom prompt file path:
 

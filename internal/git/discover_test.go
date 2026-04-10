@@ -1,6 +1,7 @@
 package git
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -27,5 +28,42 @@ func TestDiscoverGitReposExpandsTilde(t *testing.T) {
 	}
 	if repos[0] != repoPath {
 		t.Fatalf("expected expanded repo path %q, got %q", repoPath, repos[0])
+	}
+}
+
+func TestDiscoverGitReposDoesNotWriteToStdout(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	repoPath := filepath.Join(home, "code", "seakoi")
+	if err := os.MkdirAll(filepath.Join(repoPath, ".git"), 0o755); err != nil {
+		t.Fatalf("failed to create test repo: %v", err)
+	}
+
+	oldStdout := os.Stdout
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("failed to create pipe: %v", err)
+	}
+	os.Stdout = w
+	t.Cleanup(func() {
+		os.Stdout = oldStdout
+	})
+
+	_, err = DiscoverGitRepos("~/code", i18n.LanguageEnglish)
+	if err != nil {
+		t.Fatalf("DiscoverGitRepos returned error: %v", err)
+	}
+
+	if err := w.Close(); err != nil {
+		t.Fatalf("failed to close writer: %v", err)
+	}
+
+	captured, err := io.ReadAll(r)
+	if err != nil {
+		t.Fatalf("failed to read captured stdout: %v", err)
+	}
+	if len(captured) != 0 {
+		t.Fatalf("expected no stdout output, got %q", string(captured))
 	}
 }

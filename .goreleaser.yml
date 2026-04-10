@@ -38,7 +38,6 @@ archives:
       - README.md
       - README.zh-CN.md
       - LICENSE
-      - prompts/*
 
 checksum:
   name_template: 'checksums.txt'
