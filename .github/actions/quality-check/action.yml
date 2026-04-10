@@ -1,0 +1,40 @@
+name: Quality Check
+description: Run shared repository quality gates before CI success or release packaging.
+
+runs:
+  using: composite
+  steps:
+    - name: Verify dependencies
+      shell: bash
+      run: go mod verify
+
+    - name: Build
+      shell: bash
+      run: go build -v ./...
+
+    - name: Run tests
+      shell: bash
+      run: go test -v ./...
+      env:
+        SKIP_GIT_TESTS: "false"
+
+    - name: Run golangci-lint
+      uses: golangci/golangci-lint-action@v9
+      with:
+        version: latest
+
+    - name: Check embedded prompt templates
+      shell: bash
+      run: |
+        if [ ! -d "internal/ai/prompts" ]; then
+          echo "Error: embedded prompts directory is missing"
+          exit 1
+        fi
+        if [ ! -f "internal/ai/prompts/en/basic.txt" ] || [ ! -f "internal/ai/prompts/en/manager-update.txt" ] || [ ! -f "internal/ai/prompts/en/self-review.txt" ] || [ ! -f "internal/ai/prompts/en/detailed.txt" ] || [ ! -f "internal/ai/prompts/en/release-notes.txt" ]; then
+          echo "Error: one or more English embedded prompt template files are missing"
+          exit 1
+        fi
+        if [ ! -f "internal/ai/prompts/zh/basic.txt" ] || [ ! -f "internal/ai/prompts/zh/manager-update.txt" ] || [ ! -f "internal/ai/prompts/zh/self-review.txt" ] || [ ! -f "internal/ai/prompts/zh/detailed.txt" ] || [ ! -f "internal/ai/prompts/zh/release-notes.txt" ]; then
+          echo "Error: one or more Chinese embedded prompt template files are missing"
+          exit 1
+        fi

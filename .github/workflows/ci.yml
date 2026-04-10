@@ -22,33 +22,5 @@ jobs:
           go-version: '1.24'
           cache: true
 
-      - name: Verify dependencies
-        run: go mod verify
-
-      - name: Build
-        run: go build -v ./...
-
-      - name: Run tests
-        run: go test -v ./...
-        env:
-          SKIP_GIT_TESTS: "false"  # 设置为 true 可以跳过依赖 git 命令的测试
-
-      - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v9
-        with:
-          version: latest
-
-      - name: Check if embedded prompt templates exist
-        run: |
-          if [ ! -d "internal/ai/prompts" ]; then
-            echo "Error: embedded prompts directory is missing"
-            exit 1
-          fi
-          if [ ! -f "internal/ai/prompts/en/basic.txt" ] || [ ! -f "internal/ai/prompts/en/manager-update.txt" ] || [ ! -f "internal/ai/prompts/en/self-review.txt" ] || [ ! -f "internal/ai/prompts/en/detailed.txt" ] || [ ! -f "internal/ai/prompts/en/release-notes.txt" ]; then
-            echo "Error: one or more embedded prompt template files are missing"
-            exit 1
-          fi
-          if [ ! -f "internal/ai/prompts/zh/basic.txt" ] || [ ! -f "internal/ai/prompts/zh/manager-update.txt" ] || [ ! -f "internal/ai/prompts/zh/self-review.txt" ] || [ ! -f "internal/ai/prompts/zh/detailed.txt" ] || [ ! -f "internal/ai/prompts/zh/release-notes.txt" ]; then
-            echo "Error: one or more embedded prompt template files are missing"
-            exit 1
-          fi
+      - name: Run shared quality checks
+        uses: ./.github/actions/quality-check
