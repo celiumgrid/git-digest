@@ -26,10 +26,6 @@ linters-settings:
     # 拼写检查语言
     locale: US
 
-  unused:
-    # 检查导出函数的参数
-    check-exported: false
-
   unparam:
     # 检查未使用的参数
     check-exported: true
@@ -63,14 +59,12 @@ run:
   concurrency: 4
   # 超时时间
   timeout: 2m
-  # 退出代码
-  exit-code: 1
-    # 其他运行时配置
 
 # 输出配置
 output:
   # 使用彩色文本格式输出
-  formats: colored-line-number
+  formats:
+    - format: colored-line-number
 
 # 问题配置
 issues:
