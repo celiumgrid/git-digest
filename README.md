@@ -65,8 +65,10 @@ git-digest --provider openai --base-url https://your-proxy.example/v1
 
 # Prompt templates
 git-digest --prompt basic
+git-digest --prompt manager-update
+git-digest --prompt self-review
 git-digest --prompt detailed
-git-digest --prompt targeted
+git-digest --prompt release-notes
 git-digest --prompt /path/to/custom.txt
 
 # Create the global base config
@@ -146,11 +148,13 @@ git-digest --no-base-config
 
 Built-in prompt types:
 
-- `basic`
-- `detailed`
-- `targeted`
+- `basic`: Quick summary for scanning recent work
+- `manager-update`: Upward update focused on progress, impact, risks, and next steps
+- `self-review`: Personal reflection focused on output, lessons, and follow-up work
+- `detailed`: Long-form structured report for weekly or monthly summaries
+- `release-notes`: Change log style output for internal or external release notes
 
-These built-in templates are embedded in the binary.
+These built-in templates are embedded in the binary and selected by `--language`.
 
 You can also pass a custom prompt file path:
 

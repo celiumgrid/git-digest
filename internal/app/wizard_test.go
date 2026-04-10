@@ -160,6 +160,22 @@ func TestRunWizardPromptsForCustomModel(t *testing.T) {
 	assertContainsCall(t, prompter.calls, promptCall{kind: "input", label: "Custom model name"})
 }
 
+func TestRunWizardAcceptsNewBuiltInPromptTypes(t *testing.T) {
+	prompter := &stubPrompter{
+		selects:  []string{"English", "single", "preset", "last-7d", "text", "manager-update", "Gemini", "gemini-2.5-pro"},
+		inputs:   []string{".", "", "", "", ""},
+		confirms: []bool{false},
+	}
+
+	cfg, err := runWizardWithPrompter(prompter, DefaultConfig())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.Prompt != "manager-update" {
+		t.Fatalf("unexpected prompt: %q", cfg.Prompt)
+	}
+}
+
 func TestRunWizardNoLongerPromptsToSaveBaseConfig(t *testing.T) {
 	prompter := &stubPrompter{
 		selects: []string{
@@ -222,12 +238,11 @@ func TestRunBaseConfigWizardBuildsSparseConfig(t *testing.T) {
 			"预设周期",
 			"上个月",
 			"Markdown",
-			"自定义文件",
+			"向上汇报",
 			"OpenAI",
 		},
 		inputs: []string{
 			"~/code",
-			"~/prompts/team.md",
 			"alice",
 			"~/reports/team.md",
 			"https://proxy.example/v1",
@@ -253,7 +268,7 @@ func TestRunBaseConfigWizardBuildsSparseConfig(t *testing.T) {
 	if cfg.Format != "markdown" {
 		t.Fatalf("unexpected format: %q", cfg.Format)
 	}
-	if cfg.Prompt != "~/prompts/team.md" {
+	if cfg.Prompt != "manager-update" {
 		t.Fatalf("unexpected prompt: %q", cfg.Prompt)
 	}
 	if cfg.Provider != ai.ProviderOpenAI {

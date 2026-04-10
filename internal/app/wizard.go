@@ -358,7 +358,14 @@ func askModel(prompter wizardPrompter, provider, current, language string) (stri
 
 func askPrompt(prompter wizardPrompter, current, language string) (string, error) {
 	promptOptions := localizedPromptOptions(language)
-	defaultLabel := optionLabelByValue(promptOptions, chooseDefault(current != "" && current != "basic" && current != "detailed" && current != "targeted", "custom-file", chooseDefault(current != "", current, "basic")))
+	defaultValue := "basic"
+	if current != "" {
+		defaultValue = current
+	}
+	if current != "" && ai.IsCustomPrompt(ai.GetPromptTypeFromString(current)) {
+		defaultValue = "custom-file"
+	}
+	defaultLabel := optionLabelByValue(promptOptions, defaultValue)
 	choice, err := prompter.Select(i18n.T(language, "wizard.prompt"), optionLabels(promptOptions), defaultLabel)
 	if err != nil {
 		return current, err
@@ -426,8 +433,10 @@ func localizedFormatOptions(language string) []selectOption {
 func localizedPromptOptions(language string) []selectOption {
 	return []selectOption{
 		{Label: i18n.T(language, "wizard.prompt.basic"), Value: "basic"},
+		{Label: i18n.T(language, "wizard.prompt.manager_update"), Value: "manager-update"},
+		{Label: i18n.T(language, "wizard.prompt.self_review"), Value: "self-review"},
 		{Label: i18n.T(language, "wizard.prompt.detailed"), Value: "detailed"},
-		{Label: i18n.T(language, "wizard.prompt.targeted"), Value: "targeted"},
+		{Label: i18n.T(language, "wizard.prompt.release_notes"), Value: "release-notes"},
 		{Label: i18n.T(language, "wizard.prompt.custom"), Value: "custom-file"},
 	}
 }

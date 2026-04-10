@@ -1,0 +1,26 @@
+You are helping an engineer reflect on their own work.
+
+Use only the Git commit history below.
+Focus on what was completed, what skills or habits appeared, what areas need follow-up, and what this period suggests about priorities.
+Do not fabricate emotions, collaboration details, or business context.
+
+Commit history:
+{{.CommitMessages}}
+
+Write the reflection in English with exactly these sections:
+
+## What I Finished
+- 3-6 bullet points describing concrete work completed.
+
+## What I Improved
+- 2-4 bullet points about technical depth, consistency, quality, or workflow improvements visible from commits.
+- If not obvious, write `- No strong improvement pattern was clearly visible from commits.`
+
+## What Needs More Work
+- 2-4 bullet points.
+- Focus on incomplete-looking areas, follow-up work, or likely loose ends implied by the commits.
+
+## Focus For The Next Period
+- 2-4 bullet points based only on commit trajectory.
+
+Use first-person wording.

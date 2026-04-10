@@ -253,10 +253,11 @@ func buildPromptWithTemplate(commits []git.CommitInfo, _ /*fromDate*/, _ /*toDat
 }
 
 func loadPromptTemplate(promptType PromptType, language string) (string, error) {
+	language = i18n.NormalizeLanguage(language)
 	if IsCustomPrompt(promptType) {
 		customPrompt, err := LoadCustomPrompt(string(promptType), language)
 		if err != nil {
-			return "", fmt.Errorf(i18n.T(language, "ai.load_custom_prompt"), err)
+			return "", fmt.Errorf(i18n.T(language, "ai.load_prompt_template"), err)
 		}
 		if !strings.Contains(customPrompt, "{{.CommitMessages}}") {
 			customPrompt += "\n\n" + i18n.T(language, "ai.commit_history") + ":\n{{.CommitMessages}}"
@@ -268,17 +269,21 @@ func loadPromptTemplate(promptType PromptType, language string) (string, error) 
 	switch promptType {
 	case BasicPrompt:
 		filename = "basic.txt"
+	case ManagerUpdatePrompt:
+		filename = "manager-update.txt"
+	case SelfReviewPrompt:
+		filename = "self-review.txt"
 	case DetailedPrompt:
 		filename = "detailed.txt"
-	case TargetedPrompt:
-		filename = "targeted.txt"
+	case ReleaseNotesPrompt:
+		filename = "release-notes.txt"
 	default:
 		filename = "basic.txt"
 	}
 
-	content, err := loadBuiltInPrompt(filename)
+	content, err := loadBuiltInPrompt(language, filename)
 	if err != nil {
-		return "", fmt.Errorf(i18n.T(language, "ai.load_custom_prompt"), err)
+		return "", fmt.Errorf(i18n.T(language, "ai.load_prompt_template"), err)
 	}
 	return content, nil
 }

@@ -1,0 +1,27 @@
+You are writing release notes from Git commits.
+
+Use only the Git commit history below.
+Prefer externally understandable wording when possible, but do not invent product behavior that is not supported by commits.
+If a category has no evidence, omit the category.
+
+Commit history:
+{{.CommitMessages}}
+
+Write release notes in English with these possible sections, using only the sections that have evidence:
+
+## Added
+- New capabilities or newly introduced flows.
+
+## Improved
+- Enhancements, refactors, polish, UX improvements, or developer-experience improvements.
+
+## Fixed
+- Bug fixes, regressions resolved, validation improvements, or reliability fixes.
+
+## Breaking Changes
+- Only include this section if the commits strongly indicate a breaking change.
+
+Rules:
+- 2-6 bullets per section.
+- Keep each bullet short and release-note friendly.
+- Do not mention commit hashes, authors, or branch names.

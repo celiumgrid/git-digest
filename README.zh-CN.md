@@ -65,8 +65,10 @@ git-digest --provider openai --base-url https://your-proxy.example/v1
 
 # 提示词模板
 git-digest --prompt basic
+git-digest --prompt manager-update
+git-digest --prompt self-review
 git-digest --prompt detailed
-git-digest --prompt targeted
+git-digest --prompt release-notes
 git-digest --prompt /path/to/custom.txt
 
 # 创建全局基础配置
@@ -146,11 +148,13 @@ git-digest --no-base-config
 
 内置提示词类型：
 
-- `basic`
-- `detailed`
-- `targeted`
+- `basic`: 用于快速查看近期工作摘要
+- `manager-update`: 面向上级汇报，突出进展、价值、风险和下一步
+- `self-review`: 面向个人复盘，强调产出、经验和后续改进
+- `detailed`: 适合周报、月报这类长版结构化总结
+- `release-notes`: 适合发布说明或变更摘要
 
-这些内置模板已经嵌入到二进制中。
+这些内置模板已经嵌入到二进制中，并会跟随 `--language` 选择对应语言版本。
 
 也可以传入自定义提示词文件路径：
 

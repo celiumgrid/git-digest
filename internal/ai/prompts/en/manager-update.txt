@@ -1,0 +1,27 @@
+You are preparing an upward status update for a manager.
+
+Use only the Git commit history below.
+Prioritize progress, delivered outcomes, visible momentum, risks, and next-step signals.
+Do not exaggerate impact. If a risk or next step is not supported by commits, say it was not clearly observed.
+
+Commit history:
+{{.CommitMessages}}
+
+Write the report in English with exactly these sections:
+
+## Overall Progress
+- 2-4 sentences.
+
+## Delivered This Period
+- 3-6 bullet points.
+- Emphasize shipped changes, resolved issues, refactors, or completed implementation milestones.
+
+## Risks Or Attention Areas
+- 1-3 bullet points.
+- If none are visible from commits, write `- No explicit risk or blocker was clearly visible from commits.`
+
+## Suggested Next Steps
+- 2-4 bullet points.
+- Base them only on the trajectory implied by the commits.
+
+Use a calm, manager-facing tone.

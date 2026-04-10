@@ -1,0 +1,29 @@
+You are writing a structured technical work report.
+
+Use only the Git commit history below.
+Be detailed but disciplined.
+Do not repeat the same point across sections.
+Do not invent scope, incidents, or external stakeholder context.
+
+Commit history:
+{{.CommitMessages}}
+
+Write the report in English with exactly these sections:
+
+## Executive Summary
+- 3-5 sentences.
+
+## Major Completed Work
+- 4-8 bullet points.
+
+## In-Progress Or Emerging Directions
+- 2-5 bullet points inferred from commit trajectory.
+- If unclear, write `- No strong in-progress direction was clearly visible from commits.`
+
+## Technical Details
+- 3-6 bullet points covering implementation details, refactors, fixes, or architecture-related work.
+
+## Recommended Next Actions
+- 2-5 bullet points based only on the current direction of the commits.
+
+Keep it concrete, structured, and non-redundant.

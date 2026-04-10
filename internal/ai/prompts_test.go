@@ -3,6 +3,7 @@ package ai
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -17,8 +18,10 @@ func TestGetPromptType(t *testing.T) {
 		expected PromptType
 	}{
 		{"基础提示词", "basic", BasicPrompt},
+		{"向上汇报提示词", "manager-update", ManagerUpdatePrompt},
+		{"自我复盘提示词", "self-review", SelfReviewPrompt},
 		{"详细提示词", "detailed", DetailedPrompt},
-		{"针对性提示词", "targeted", TargetedPrompt},
+		{"发布说明提示词", "release-notes", ReleaseNotesPrompt},
 		{"未知类型", "unknown", PromptType("unknown")},
 		{"空字符串", "", PromptType("")},
 	}
@@ -107,6 +110,28 @@ func TestLoadBuiltInPromptDoesNotDependOnWorkingDirectory(t *testing.T) {
 	}
 	if content == "" {
 		t.Fatal("built-in prompt should not be empty")
+	}
+}
+
+func TestLoadPromptTemplateUsesLanguageSpecificBuiltins(t *testing.T) {
+	english, err := loadPromptTemplate(ManagerUpdatePrompt, i18n.LanguageEnglish)
+	if err != nil {
+		t.Fatalf("failed to load english built-in prompt: %v", err)
+	}
+
+	chinese, err := loadPromptTemplate(ManagerUpdatePrompt, i18n.LanguageChinese)
+	if err != nil {
+		t.Fatalf("failed to load chinese built-in prompt: %v", err)
+	}
+
+	if english == chinese {
+		t.Fatal("expected language-specific prompt templates to differ")
+	}
+	if !strings.Contains(english, "{{.CommitMessages}}") {
+		t.Fatal("english prompt should keep commit placeholder")
+	}
+	if !strings.Contains(chinese, "{{.CommitMessages}}") {
+		t.Fatal("chinese prompt should keep commit placeholder")
 	}
 }
 
