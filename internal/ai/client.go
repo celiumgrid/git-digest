@@ -142,14 +142,6 @@ func NewClient(cfg ClientConfig) (*Client, error) {
 	}, nil
 }
 
-func NewGeminiClient() (*Client, error) {
-	return NewClient(ClientConfig{Provider: ProviderGemini, Language: i18n.LanguageEnglish})
-}
-
-func NewGeminiClientWithModel(modelName string) (*Client, error) {
-	return NewClient(ClientConfig{Provider: ProviderGemini, Model: modelName, Language: i18n.LanguageEnglish})
-}
-
 func (c *Client) SummarizeCommits(commits []git.CommitInfo) (string, error) {
 	return c.SummarizeCommitsWithPrompt(commits, BasicPrompt)
 }

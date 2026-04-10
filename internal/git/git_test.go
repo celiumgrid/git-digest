@@ -1,8 +1,10 @@
 package git
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
+	"reflect"
 	"testing"
 
 	"github.com/celiumgrid/git-digest/internal/i18n"
@@ -85,6 +87,43 @@ func TestParseCommitsPreservesPipeInSubject(t *testing.T) {
 	}
 }
 
+func TestGetCommitDetailsUsesNoPatchAndLoadsChangedFiles(t *testing.T) {
+	originalExecGitCommand := execGitCommand
+	t.Cleanup(func() {
+		execGitCommand = originalExecGitCommand
+	})
+
+	var calls [][]string
+	execGitCommand = func(repoPath string, args ...string) ([]byte, error) {
+		copied := append([]string(nil), args...)
+		calls = append(calls, copied)
+
+		switch {
+		case len(args) >= 1 && args[0] == "show" && containsArg(args, "--name-only"):
+			return []byte("internal/git/git.go\nREADME.md\n"), nil
+		case len(args) >= 1 && args[0] == "show":
+			return []byte("abc123\x1fJohn Doe\x1f2023-01-01 12:00:00 +0800\x1fInitial commit\x1fHEAD -> main\x1e"), nil
+		default:
+			return nil, fmt.Errorf("unexpected args: %v", args)
+		}
+	}
+
+	commit, err := GetCommitDetails("abc123", &Options{RepoPath: "/repo", Language: i18n.LanguageEnglish})
+	if err != nil {
+		t.Fatalf("GetCommitDetails returned error: %v", err)
+	}
+
+	if len(calls) != 2 {
+		t.Fatalf("expected two git calls, got %d", len(calls))
+	}
+	if !containsArg(calls[0], "--no-patch") {
+		t.Fatalf("expected metadata call to include --no-patch, got %v", calls[0])
+	}
+	if !reflect.DeepEqual(commit.ChangedFiles, []string{"internal/git/git.go", "README.md"}) {
+		t.Fatalf("unexpected changed files: %v", commit.ChangedFiles)
+	}
+}
+
 // TestGetGitUserName 测试获取Git用户名
 func TestGetGitUserName(t *testing.T) {
 	// 跳过实际执行git命令的测试
@@ -116,4 +155,8 @@ func contains(slice []string, item string) bool {
 		}
 	}
 	return false
+}
+
+func containsArg(args []string, target string) bool {
+	return contains(args, target)
 }

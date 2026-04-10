@@ -188,6 +188,9 @@ func resolveRange(fromRaw, toRaw string, loc *time.Location, language string) (W
 	if err != nil {
 		return Window{}, localizedf(language, "invalid end date: %v", "结束日期格式错误: %v", err)
 	}
+	if from.After(to) {
+		return Window{}, localized(language, "start date cannot be after end date", "开始日期不能晚于结束日期")
+	}
 	end := endOfDay(to)
 	return Window{Start: from, End: end, Label: labelForDuration(from, end, language), Kind: KindRange}, nil
 }

@@ -17,6 +17,14 @@ const (
 	gitPrettyFormat = "%H%x1f%an%x1f%ad%x1f%s%x1f%D%x1e"
 )
 
+var execGitCommand = func(repoPath string, args ...string) ([]byte, error) {
+	cmd := exec.Command("git", args...)
+	if repoPath != "" {
+		cmd.Dir = repoPath
+	}
+	return cmd.Output()
+}
+
 // Options Git操作的选项
 type Options struct {
 	RepoPath string // Git仓库路径
@@ -85,15 +93,7 @@ func GetCommitsBetween(fromDate, toDate time.Time, opts *Options) ([]CommitInfo,
 	}
 
 	// 构建git log命令
-	cmd := exec.Command("git", args...)
-
-	// 设置工作目录
-	if opts != nil {
-		cmd.Dir = opts.RepoPath
-	}
-
-	// 执行命令
-	output, err := cmd.Output()
+	output, err := execGitCommand(optionRepoPath(opts), args...)
 	if err != nil {
 		return nil, fmt.Errorf(i18n.T(language, "git.exec_log"), err)
 	}
@@ -125,17 +125,11 @@ func GetCommitsThisWeek(opts *Options) ([]CommitInfo, error) {
 func GetCommitDetails(hash string, opts *Options) (*CommitInfo, error) {
 	language := optionLanguage(opts)
 	// 获取提交的基本信息
-	cmd := exec.Command("git", "show",
+	output, err := execGitCommand(optionRepoPath(opts), "show",
+		"--no-patch",
 		"--pretty=format:"+gitPrettyFormat,
 		"--date=iso",
 		hash)
-
-	// 设置工作目录
-	if opts != nil {
-		cmd.Dir = opts.RepoPath
-	}
-
-	output, err := cmd.Output()
 	if err != nil {
 		return nil, fmt.Errorf(i18n.T(language, "git.commit_details"), err)
 	}
@@ -149,14 +143,7 @@ func GetCommitDetails(hash string, opts *Options) (*CommitInfo, error) {
 	commit := commits[0]
 
 	// 获取变更的文件列表
-	cmdFiles := exec.Command("git", "show", "--name-only", "--pretty=format:", hash)
-
-	// 设置工作目录
-	if opts != nil {
-		cmdFiles.Dir = opts.RepoPath
-	}
-
-	outputFiles, err := cmdFiles.Output()
+	outputFiles, err := execGitCommand(optionRepoPath(opts), "show", "--name-only", "--pretty=format:", hash)
 	if err != nil {
 		return nil, fmt.Errorf(i18n.T(language, "git.changed_files"), err)
 	}
@@ -173,19 +160,10 @@ func GetCommitDetails(hash string, opts *Options) (*CommitInfo, error) {
 // GetGitUserName 获取Git用户名
 func GetGitUserName(repoPath, language string) (string, error) {
 	// 构建git config命令获取用户名
-	cmd := exec.Command("git", "config", "user.name")
-
-	// 设置工作目录
-	if repoPath != "" {
-		cmd.Dir = repoPath
-	}
-
-	// 执行命令
-	output, err := cmd.Output()
+	output, err := execGitCommand(repoPath, "config", "user.name")
 	if err != nil {
 		// 如果获取失败，尝试获取全局用户名
-		cmdGlobal := exec.Command("git", "config", "--global", "user.name")
-		output, err = cmdGlobal.Output()
+		output, err = execGitCommand("", "config", "--global", "user.name")
 		if err != nil {
 			return "", fmt.Errorf(i18n.T(language, "git.git_user"), err)
 		}
@@ -279,6 +257,13 @@ func optionLanguage(opts *Options) string {
 		return i18n.LanguageEnglish
 	}
 	return i18n.NormalizeLanguage(opts.Language)
+}
+
+func optionRepoPath(opts *Options) string {
+	if opts == nil {
+		return ""
+	}
+	return opts.RepoPath
 }
 
 // DiscoverGitRepos 发现指定目录下的所有Git仓库

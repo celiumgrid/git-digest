@@ -91,3 +91,15 @@ func TestResolveRangeRejectsIncompleteBounds(t *testing.T) {
 		t.Fatal("expected error for incomplete range")
 	}
 }
+
+func TestResolveRangeRejectsReverseBounds(t *testing.T) {
+	_, err := ResolveWithLanguage(
+		Spec{Kind: KindRange, From: "2026-04-10", To: "2026-04-01"},
+		time.UTC,
+		time.Date(2026, 4, 10, 12, 0, 0, 0, time.UTC),
+		"en",
+	)
+	if err == nil {
+		t.Fatal("expected error for reverse range bounds")
+	}
+}
