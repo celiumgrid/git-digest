@@ -38,13 +38,13 @@ jobs:
         with:
           version: latest
 
-      - name: Check if prompts directory exists
+      - name: Check if embedded prompt templates exist
         run: |
-          if [ ! -d "prompts" ]; then
-            echo "Error: prompts directory is missing"
+          if [ ! -d "internal/ai/prompts" ]; then
+            echo "Error: embedded prompts directory is missing"
             exit 1
           fi
-          if [ ! -f "prompts/basic.txt" ] || [ ! -f "prompts/detailed.txt" ] || [ ! -f "prompts/targeted.txt" ]; then
-            echo "Error: one or more prompt template files are missing"
+          if [ ! -f "internal/ai/prompts/basic.txt" ] || [ ! -f "internal/ai/prompts/detailed.txt" ] || [ ! -f "internal/ai/prompts/targeted.txt" ]; then
+            echo "Error: one or more embedded prompt template files are missing"
             exit 1
           fi
