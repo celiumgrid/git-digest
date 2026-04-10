@@ -117,9 +117,14 @@ Language is selected with `--language en|zh`.
 Configuration is applied in this order:
 
 1. Built-in defaults
-2. Global base config (`~/.config/git-digest/config.json`)
+2. Global base config (`<user-config-dir>/git-digest/config.json`)
 3. CLI flags
 4. Interactive wizard input
+
+The default config path is platform-specific:
+- macOS: `~/Library/Application Support/git-digest/config.json`
+- Linux: `~/.config/git-digest/config.json`
+- Windows: `%AppData%\\git-digest\\config.json`
 
 Use `git-digest config init` to create or overwrite the global base config file.
 This command writes a dedicated global template instead of saving the defaults from a single report run.

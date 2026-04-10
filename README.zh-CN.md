@@ -117,9 +117,14 @@ git-digest config init
 配置按以下顺序生效：
 
 1. 内置默认值
-2. 全局基础配置（`~/.config/git-digest/config.json`）
+2. 全局基础配置（`<用户配置目录>/git-digest/config.json`）
 3. 命令行参数
 4. 交互式向导输入
+
+默认配置路径会随平台变化：
+- macOS：`~/Library/Application Support/git-digest/config.json`
+- Linux：`~/.config/git-digest/config.json`
+- Windows：`%AppData%\\git-digest\\config.json`
 
 使用 `git-digest config init` 会创建或覆盖全局基础配置文件。
 这个命令写入的是一份独立的全局配置模板，不会把你某次运行时的默认值直接保存进去。
