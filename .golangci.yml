@@ -1,87 +1,69 @@
-# golangci-lint 配置文件
-# 详细文档: https://golangci-lint.run/usage/configuration/
-
-# 全局设置
-linters-settings:
-  # 启用所有可能的检查
-  errcheck:
-    check-type-assertions: true
-    check-blank: true
-
-  gocyclo:
-    # 循环复杂度阈值
-    min-complexity: 60
-
-  dupl:
-    # 重复代码检测阈值
-    threshold: 100
-
-  goconst:
-    # 最小字符串长度
-    min-len: 3
-    # 最小出现次数
-    min-occurrences: 3
-
-  misspell:
-    # 拼写检查语言
-    locale: US
-
-  unparam:
-    # 检查未使用的参数
-    check-exported: true
-
-# 启用的linters
+version: "2"
+run:
+  concurrency: 4
+output:
+  formats:
+    text:
+      path: stdout
 linters:
   enable:
-    - errcheck      # 检查错误处理
-    - gosimple      # 检查代码简化机会
-    - govet         # 检查Go常见错误
-    - ineffassign   # 检测无效的赋值
-    - staticcheck   # go静态分析器
-    - typecheck     # 类型检查
-    - unused        # 检查未使用的代码
-    - gocyclo       # 检查代码复杂度
-    - gosec         # 检查安全问题
-    - misspell      # 拼写检查
-    - revive        # 快速的lint工具
-    - gofmt         # 格式化检查
-    - goimports     # 导入格式化
-    - bodyclose     # 检查HTTP响应体是否关闭
-    - gocritic      # 提供多种代码检查
-    - prealloc      # 找出可以预分配的切片声明
-    - unconvert     # 移除不必要的类型转换
-    - unparam       # 报告未使用的函数参数
-    - whitespace    # 检查多余的空格
-
-# 运行配置
-run:
-  # 默认并发数
-  concurrency: 4
-  # 超时时间
-  timeout: 2m
-
-# 输出配置
-output:
-  # 使用彩色文本格式输出
-  formats:
-    - format: colored-line-number
-
-# 问题配置
+    - bodyclose
+    - gocritic
+    - gocyclo
+    - gosec
+    - misspell
+    - prealloc
+    - revive
+    - unconvert
+    - unparam
+    - whitespace
+  settings:
+    dupl:
+      threshold: 100
+    errcheck:
+      check-type-assertions: true
+      check-blank: true
+    goconst:
+      min-len: 3
+      min-occurrences: 3
+    gocyclo:
+      min-complexity: 60
+    misspell:
+      locale: US
+    unparam:
+      check-exported: true
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - dupl
+          - gosec
+        path: _test\.go
+    paths:
+      - .*_test\.go$
+      - vendor
+      - dist
+      - third_party$
+      - builtin$
+      - examples$
 issues:
-  # 最大问题数
   max-issues-per-linter: 0
   max-same-issues: 0
-  # 排除目录
-  exclude-dirs:
-    - vendor
-    - dist
-  # 排除文件
-  exclude-files:
-    - '.*_test\.go$'
-  # 排除规则
-  exclude-rules:
-    # 排除测试文件中的某些检查
-    - path: '_test\.go'
-      linters:
-        - gosec
-        - dupl
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - .*_test\.go$
+      - vendor
+      - dist
+      - third_party$
+      - builtin$
+      - examples$

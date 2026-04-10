@@ -100,7 +100,7 @@ func (s *Service) Run(cfg Config) error {
 		return fmt.Errorf(i18n.T(cfg.Language, "service.generate_summary"), err)
 	}
 
-	var output io.Writer = s.Stdout
+	var output = s.Stdout
 	if cfg.OutputFile != "" {
 		f, err := os.Create(cfg.OutputFile)
 		if err != nil {

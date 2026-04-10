@@ -70,6 +70,7 @@ func SaveConfig(path string, cfg Config, language string) error {
 		return fmt.Errorf(i18n.T(language, "config_store.mkdir"), err)
 	}
 
+	//nolint:gosec // The config file intentionally persists the user-supplied API key.
 	b, err := json.MarshalIndent(storedFromConfig(cfg), "", "  ")
 	if err != nil {
 		return fmt.Errorf(i18n.T(language, "config_store.marshal"), err)

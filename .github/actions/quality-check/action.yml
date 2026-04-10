@@ -19,9 +19,9 @@ runs:
         SKIP_GIT_TESTS: "false"
 
     - name: Run golangci-lint
-      uses: golangci/golangci-lint-action@v6
+      uses: golangci/golangci-lint-action@v9
       with:
-        version: v1.64.8
+        version-file: .golangci-lint-version
 
     - name: Check embedded prompt templates
       shell: bash
