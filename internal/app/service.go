@@ -13,6 +13,7 @@ import (
 	"github.com/celiumgrid/git-digest/internal/i18n"
 	"github.com/celiumgrid/git-digest/internal/report"
 	"github.com/celiumgrid/git-digest/internal/timequery"
+	"github.com/celiumgrid/git-digest/pkg/logx"
 )
 
 type Service struct {
@@ -32,6 +33,7 @@ func NewService(stdout, stderr io.Writer) *Service {
 
 func (s *Service) Run(cfg Config) error {
 	cfg.Language = i18n.NormalizeLanguage(cfg.Language)
+	logger := logx.New(s.Stdout, s.Stderr)
 	if err := ValidateConfig(cfg); err != nil {
 		return err
 	}
@@ -46,13 +48,13 @@ func (s *Service) Run(cfg Config) error {
 		return err
 	}
 
-	fmt.Fprintf(s.Stdout, i18n.T(cfg.Language, "service.processing")+"\n", len(repoPaths))
+	logger.Infof(i18n.T(cfg.Language, "service.processing"), len(repoPaths))
 
 	var allCommits []git.CommitInfo
 	repoCommitCounts := make(map[string]int)
 
 	for _, currentRepoPath := range repoPaths {
-		fmt.Fprintf(s.Stdout, i18n.T(cfg.Language, "service.analyzing_repo")+"\n", currentRepoPath)
+		logger.Infof(i18n.T(cfg.Language, "service.analyzing_repo"), currentRepoPath)
 		gitOpts := git.NewGitOptionsWithLanguage(currentRepoPath, cfg.Language)
 		if cfg.Author != "" {
 			gitOpts.Author = cfg.Author
@@ -60,7 +62,7 @@ func (s *Service) Run(cfg Config) error {
 
 		commits, commitErr := git.GetCommitsBetween(window.Start, window.End, gitOpts)
 		if commitErr != nil {
-			fmt.Fprintf(s.Stderr, i18n.T(cfg.Language, "service.warning_repo")+"\n", currentRepoPath, commitErr)
+			logger.Warnf(i18n.T(cfg.Language, "service.warning_repo"), currentRepoPath, commitErr)
 			continue
 		}
 
@@ -75,10 +77,10 @@ func (s *Service) Run(cfg Config) error {
 		return allCommits[i].Date.After(allCommits[j].Date)
 	})
 
-	printStats(s.Stdout, cfg, repoCommitCounts)
+	printStats(logger, s.Stdout, cfg, repoCommitCounts)
 
 	if len(allCommits) == 0 {
-		fmt.Fprintf(s.Stdout, i18n.T(cfg.Language, "service.no_commits")+"\n", window.Start.Format("2006-01-02"), window.End.Format("2006-01-02"))
+		logger.Warnf(i18n.T(cfg.Language, "service.no_commits"), window.Start.Format("2006-01-02"), window.End.Format("2006-01-02"))
 		return nil
 	}
 
@@ -115,7 +117,7 @@ func (s *Service) Run(cfg Config) error {
 		return fmt.Errorf(i18n.T(cfg.Language, "service.write_report"), err)
 	}
 
-	fmt.Fprintln(s.Stdout, i18n.T(cfg.Language, "service.report_generated"))
+	logger.Success(i18n.T(cfg.Language, "service.report_generated"))
 	return nil
 }
 
@@ -141,8 +143,8 @@ func resolveRepoPaths(cfg Config) ([]string, error) {
 	}
 }
 
-func printStats(out io.Writer, cfg Config, repoCommitCounts map[string]int) {
-	fmt.Fprintln(out, i18n.T(cfg.Language, "service.stats_heading"))
+func printStats(logger *logx.Logger, out io.Writer, cfg Config, repoCommitCounts map[string]int) {
+	logger.Info(i18n.T(cfg.Language, "service.stats_heading"))
 	total := 0
 	for repoPath, count := range repoCommitCounts {
 		displayPath := repoPath

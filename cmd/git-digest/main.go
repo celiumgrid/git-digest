@@ -11,6 +11,7 @@ import (
 	"github.com/celiumgrid/git-digest/internal/i18n"
 	"github.com/celiumgrid/git-digest/internal/pathutil"
 	"github.com/celiumgrid/git-digest/internal/timequery"
+	"github.com/celiumgrid/git-digest/pkg/logx"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -62,6 +63,8 @@ var versionCmd = &cobra.Command{
 func init() {
 	language := preferredLanguage(os.Args[1:])
 	localizeCLI(language)
+	rootCmd.SilenceErrors = true
+	rootCmd.SilenceUsage = true
 	rootCmd.AddCommand(versionCmd)
 	rootCmd.AddCommand(wizardCmd)
 	rootCmd.AddCommand(configCmd)
@@ -94,7 +97,7 @@ func init() {
 
 func main() {
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		logx.New(os.Stdout, os.Stderr).Error(err.Error())
 		os.Exit(1)
 	}
 }
